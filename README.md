@@ -1,9 +1,6 @@
-# Block ID 
+# Block ID JavaScript SDK
 
 [![NPM version][npm-image]][npm-url]
-
-Block ID JavaScript SDK
-
 
 ## Installation
 
