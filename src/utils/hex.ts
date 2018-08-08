@@ -1,3 +1,5 @@
+import * as BN from "bn.js";
+
 export interface IAnyToHexOptions {
   length?: number;
   add0x?: boolean;
@@ -23,6 +25,8 @@ export function anyToHex(data: any = Buffer.alloc(0), { length, add0x }: IAnyToH
       case "object":
         if (Buffer.isBuffer(data)) {
           result = (data as Buffer).toString("hex");
+        } else if (BN.isBN(data)) {
+          result = (data as BN.IBN).toString(16);
         }
         break;
     }
