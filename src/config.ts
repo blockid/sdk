@@ -1,13 +1,13 @@
 import { NetworkVersions } from "./network";
 import { IConfig } from "./interfaces";
 
-export const defaultConfig: IConfig = {
+export const config: IConfig = {
   network: {
     endpoints: {
-      [ NetworkVersions.MainNet ]: "https://mainnet.infura.io/xY0BoPOcZsiZItYLBLvj",
-      [ NetworkVersions.Ropsten ]: "https://ropsten.infura.io/xY0BoPOcZsiZItYLBLvj",
-      [ NetworkVersions.Rinkeby ]: "https://rinkeby.infura.io/xY0BoPOcZsiZItYLBLvj",
-      [ NetworkVersions.Kovan ]: "https://kovan.infura.io/xY0BoPOcZsiZItYLBLvj",
+      [ NetworkVersions.MainNet ]: "https://mainnet.infura.io/",
+      [ NetworkVersions.Ropsten ]: "https://ropsten.infura.io/",
+      [ NetworkVersions.Rinkeby ]: "https://rinkeby.infura.io/",
+      [ NetworkVersions.Kovan ]: "https://kovan.infura.io/",
       [ NetworkVersions.Local ]: "http://localhost:8545",
     },
   },

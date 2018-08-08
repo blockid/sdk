@@ -1,6 +1,7 @@
 import * as Eth from "ethjs";
 import { BehaviorSubject } from "rxjs";
 import { anyToHex } from "../utils";
+import { config } from "../config";
 import { NetworkVersions } from "./constants";
 import { INetworkOptions, INetwork } from "./interfaces";
 
@@ -24,9 +25,8 @@ export class Network implements INetwork {
    * @param endpoints
    */
   constructor({ version, endpoints }: INetworkOptions = {}) {
-    if (endpoints) {
-      this.endpoints = endpoints;
-    }
+    this.endpoints = endpoints || config.network.endpoints;
+
     if (version) {
       this.switchVersion(version);
     }
