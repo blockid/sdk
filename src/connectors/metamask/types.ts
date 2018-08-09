@@ -3,4 +3,4 @@ export type TMetaMaskedWindow = Partial<Window> & {
   web3?: {
     currentProvider: any;
   }
-}
+};

@@ -4,12 +4,12 @@ import { IStorage } from "../interfaces";
 import { IMember } from "../member";
 import { INetwork } from "../network";
 import { IdentityStatus } from "./constants";
-import { IIdentityState } from "./interfaces";
+import { IIdentityState, IIdentity } from "./interfaces";
 
 /**
  * Identity
  */
-export class Identity {
+export class Identity implements IIdentity {
 
   /**
    * status$ subject
@@ -32,9 +32,7 @@ export class Identity {
       network.version$,
       member.address$,
     ])
-      .pipe(mergeMap((subject) => {
-        return subject;
-      }))
+      .pipe(mergeMap((subject) => subject))
       .subscribe(this.initializingSubscription.bind(this));
   }
 
