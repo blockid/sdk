@@ -52,9 +52,8 @@ export class MetaMaskConnector implements IMetaMaskConnector {
   private configureMember(): void {
     this
       .message$
-      .pipe((filter(({ type, payload }) => (
-        type === MetaMaskMessageTypes.SelectedAddress &&
-        payload
+      .pipe((filter(({ type }) => (
+        type === MetaMaskMessageTypes.SelectedAddress
       ))))
       .pipe(map(({ payload }) => payload as string))
       .subscribe(this.member.address$);
@@ -85,13 +84,13 @@ export class MetaMaskConnector implements IMetaMaskConnector {
 
       switch (event.data && event.data.name) {
         case "publicConfig":
-          const { selectedAddress: payload } = event.data.data as {
+          const { selectedAddress } = event.data.data as {
             selectedAddress: string;
           };
 
           this.message$.next({
             type: MetaMaskMessageTypes.SelectedAddress,
-            payload,
+            payload: selectedAddress || null,
           });
           break;
       }
