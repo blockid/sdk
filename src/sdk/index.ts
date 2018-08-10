@@ -1,2 +1,2 @@
 export * from "./interfaces";
-export * from "./Member";
+export * from "./Sdk";

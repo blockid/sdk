@@ -1,14 +1,22 @@
 import * as Eth from "ethjs";
 import { BehaviorSubject } from "rxjs";
 import { anyToHex } from "../utils";
-import { config } from "../config";
+import { errNetworkUnknownProvider } from "../errors";
 import { NetworkVersions } from "./constants";
-import { INetworkOptions, INetwork } from "./interfaces";
+import { INetwork } from "./interfaces";
 
 /**
  * Network
  */
 export class Network implements INetwork {
+
+  /**
+   * creates provider
+   * @param endpoint
+   */
+  public static createProvider(endpoint: string): any {
+    return new Eth.HttpProvider(endpoint);
+  }
 
   /**
    * version$ subject
@@ -17,64 +25,37 @@ export class Network implements INetwork {
 
   private eth: Eth.IEth = null;
 
-  private readonly endpoints: { [ key: string ]: string } = {};
-
   /**
-   * constructor
-   * @param version
-   * @param endpoints
-   */
-  constructor({ version, endpoints }: INetworkOptions = {}) {
-    this.endpoints = endpoints || config.network.endpoints;
-
-    if (version) {
-      this.switchVersion(version);
-    }
-  }
-
-  /**
-   * provider
+   * sets provider
    * @param provider
    */
-  public set provider(provider: any) {
+  public setProvider(provider: any) {
     this.eth = new Eth(provider);
   }
 
   /**
-   * version getter
+   * gets version
    */
-  public get version(): NetworkVersions {
+  public getVersion(): NetworkVersions {
     return this.version$.getValue();
   }
 
   /**
-   * version setter
+   * sets version
    * @param version
    */
-  public set version(version: NetworkVersions) {
-    if (this.version !== version) {
+  public setVersion(version: NetworkVersions): void {
+    if (this.getVersion() !== version) {
       this.version$.next(version);
-    }
-  }
-
-  /**
-   * switches version
-   * @param version
-   */
-  public switchVersion(version: NetworkVersions): void {
-    const endpoint = this.endpoints[ version ];
-
-    if (endpoint) {
-      this.provider = new Eth.HttpProvider(endpoint);
-      this.version = version;
     }
   }
 
   /**
    * detects version
    */
-  public async detectVersion(): Promise<void> {
-    this.version = (await this.eth.net_version()) as any || null;
+  public async detectVersion(): Promise<NetworkVersions> {
+    const version: any = await this.eth.net_version();
+    return version || null;
   }
 
   /**
@@ -82,30 +63,28 @@ export class Network implements INetwork {
    * @param message
    * @param address
    */
-  public async personalSign(message: Buffer | string, address: string): Promise<string> {
-    let result: string = null;
+  public personalSign(message: Buffer | string, address: string): Promise<string> {
+    this.verifyProvider();
 
-    if (this.eth) {
-      result = await this.eth.personal_sign(
-        anyToHex(message, { add0x: true }),
-        address,
-      );
-    }
-
-    return result;
+    return this.eth.personal_sign(
+      anyToHex(message, { add0x: true }),
+      address,
+    );
   }
 
   /**
    * gets accounts
    */
   public async getAccounts(): Promise<string[]> {
-    let result: string[] = [];
+    this.verifyProvider();
 
-    if (this.eth) {
-      const accounts = await this.eth.accounts();
-      result = accounts && accounts.length ? accounts : [];
+    const accounts = await this.eth.accounts();
+    return accounts && accounts.length ? accounts : [];
+  }
+
+  private verifyProvider(): void {
+    if (!this.eth) {
+      throw errNetworkUnknownProvider;
     }
-
-    return result;
   }
 }

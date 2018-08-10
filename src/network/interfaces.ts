@@ -1,16 +1,12 @@
 import { BehaviorSubject } from "rxjs";
 import { NetworkVersions } from "./constants";
 
-export interface INetworkOptions {
-  version?: NetworkVersions;
-  endpoints?: {[key: string]: string};
-}
-
 export interface INetwork {
-  provider: any;
   version$: BehaviorSubject<NetworkVersions>;
-  version: NetworkVersions;
-  detectVersion(): Promise<void>;
+  setProvider(provider: any): void;
+  setVersion(version: NetworkVersions): void;
+  getVersion(): NetworkVersions;
+  detectVersion(): Promise<NetworkVersions>;
   personalSign(message: Buffer | string, address: string): Promise<string>;
   getAccounts(): Promise<string[]>;
 }

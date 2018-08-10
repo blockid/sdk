@@ -1,4 +1,4 @@
 export enum MetaMaskMessageTypes {
-  EthereumProvider = "ETHEREUM_PROVIDER",
+  EthProvider = "ETH_PROVIDER",
   SelectedAddress = "SELECTED_ADDRESS",
 }

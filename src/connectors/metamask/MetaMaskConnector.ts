@@ -1,65 +1,109 @@
-import { from, Subject } from "rxjs";
-import { mergeMap, map, filter } from "rxjs/operators";
-import { IMember, NetworkMember } from "../../member";
-import { INetwork, Network } from "../../network";
+import { of, from, Subject } from "rxjs";
+import { mergeMap, map, filter, catchError } from "rxjs/operators";
+import { Api } from "../../api";
+import { Member } from "../../member";
+import { Network } from "../../network";
+import { ISdk } from "../../sdk";
+import { errNetworkInvalidVersion, errApiUnsupportedNetwork } from "../../errors";
 import { MetaMaskMessageTypes } from "./constants";
-import { IMetaMaskConnector, IMetaMaskMessage } from "./interfaces";
+import { IMetaMaskMessage, IMetaMaskConnectorOptions } from "./interfaces";
 import { TMetaMaskedWindow } from "./types";
 
 /**
  * MetaMask Connector
  */
-export class MetaMaskConnector implements IMetaMaskConnector {
-
-  public network: INetwork;
-  public member: IMember;
-
-  private message$ = new Subject<IMetaMaskMessage>();
+export class MetaMaskConnector {
 
   /**
-   * constructor
+   * metamask messages
+   */
+  public static message$ = new Subject<IMetaMaskMessage>();
+
+  /**
+   * connects
+   * @param options
    * @param win
    */
-  constructor(win: TMetaMaskedWindow = window) {
-    this.network = new Network();
-    this.member = new NetworkMember(this.network);
+  public static connect(options: IMetaMaskConnectorOptions, win?: TMetaMaskedWindow): ISdk {
+    const error$ = new Subject<any>();
+    const network = new Network();
+    const member = new Member(network);
+    const api = new Api(member);
 
-    this.configureNetwork();
-    this.configureMember();
-    this.attachWindow(win);
-  }
-
-  private configureNetwork(): void {
-    this
-      .message$
+    // eth provider
+    const ethProvider = this.message$
       .pipe((filter(({ type, payload }) => (
-        type === MetaMaskMessageTypes.EthereumProvider &&
+        type === MetaMaskMessageTypes.EthProvider &&
         payload
       ))))
       .pipe(map(({ payload }) => payload))
       .pipe(mergeMap((provider) => from((async () => {
-        this.network.provider = provider;
-        await this.network.detectVersion();
-        const [ address ] = await this.network.getAccounts();
+        network.setProvider(provider);
+        const version = await network.detectVersion();
+
+        if (!options.api[ version ]) {
+          throw errApiUnsupportedNetwork;
+        }
+
+        api.setOptions(options.api[ version ] || null);
+
+        const settings = await api.getSettings();
+
+        if (version !== settings.network.version) {
+          throw errNetworkInvalidVersion;
+        }
+
+        network.setVersion(version);
+
+        const [ address ] = await network.getAccounts();
 
         if (address) {
-          this.member.address = address;
+          member.setAddress(address);
         }
-      })())))
-      .subscribe();
-  }
+      })()).pipe(catchError((err) => of(err)))));
 
-  private configureMember(): void {
-    this
+    // selected address
+    const selectedAddress = this
       .message$
       .pipe((filter(({ type }) => (
         type === MetaMaskMessageTypes.SelectedAddress
       ))))
       .pipe(map(({ payload }) => payload as string))
-      .subscribe(this.member.address$);
+      .pipe(mergeMap((address) => from((async () => {
+        member.setAddress(address || null);
+      })()).pipe(catchError((err) => of(err)))));
+
+    of(ethProvider, selectedAddress)
+      .pipe(mergeMap((value) => value))
+      .pipe(filter((value) => !!value))
+      .subscribe(error$);
+
+    this.attachWindow(win);
+
+    return {
+      error$,
+      api,
+      member,
+      network,
+    };
   }
 
-  private attachWindow(win: TMetaMaskedWindow) {
+  private static attachedWindow: TMetaMaskedWindow;
+
+  private static attachWindow(win: TMetaMaskedWindow): void {
+    if (
+      typeof win === "undefined" &&
+      typeof window !== "undefined"
+    ) {
+      win = window;
+    }
+
+    if (!win || this.attachedWindow) {
+      return;
+    }
+
+    this.attachedWindow = win;
+
     win.addEventListener("message", ({ data: event }: { data: { [ key: string ]: any } }) => {
       if (!event || typeof event !== "object") {
         return;
@@ -68,7 +112,7 @@ export class MetaMaskConnector implements IMetaMaskConnector {
       switch (event.type) {
         case "ETHEREUM_PROVIDER_SUCCESS":
           this.message$.next({
-            type: MetaMaskMessageTypes.EthereumProvider,
+            type: MetaMaskMessageTypes.EthProvider,
             payload: win.ethereum,
           });
           break;
@@ -100,7 +144,7 @@ export class MetaMaskConnector implements IMetaMaskConnector {
       win.postMessage({ type: "ETHEREUM_PROVIDER_REQUEST" }, "*");
     } else {
       this.message$.next({
-        type: MetaMaskMessageTypes.EthereumProvider,
+        type: MetaMaskMessageTypes.EthProvider,
         payload: win.web3.currentProvider,
       });
     }
