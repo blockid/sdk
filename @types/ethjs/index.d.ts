@@ -6,7 +6,7 @@ declare module "ethjs" {
       new(endpoint: string): any;
     };
 
-    new(provider?: any): Eth.IEth;
+    new(provider?: Eth.IProvider): Eth.IEth;
   };
 
   namespace Eth {
@@ -27,6 +27,20 @@ declare module "ethjs" {
       getTransactionReceipt(hash: string): Promise<Eth.ITransactionReceipt>;
       sign(address: string, hash: string): Promise<string>;
       personal_sign(message: string, address: string): Promise<string>;
+    }
+
+    export interface IProvider {
+      send?: () => any;
+      sendAsync?: (
+        payload: {
+          jsonrpc: string;
+          method: string;
+          params: any[];
+          id: number;
+        },
+        callback: (err: any, response: any) => void,
+      ) => void;
+      isConnected?: () => boolean;
     }
 
     export interface IBlock {
