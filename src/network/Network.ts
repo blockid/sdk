@@ -1,8 +1,8 @@
 import * as Eth from "ethjs";
 import { BehaviorSubject } from "rxjs";
+import { errNetworkUnknownProvider, errNetworkInvalidStatus } from "../errors";
 import { anyToHex } from "../utils";
-import { errNetworkUnknownProvider } from "../errors";
-import { NetworkVersions } from "./constants";
+import { NetworkStatuses, NetworkVersions } from "./constants";
 import { INetwork } from "./interfaces";
 
 /**
@@ -22,6 +22,11 @@ export class Network implements INetwork {
    * version$ subject
    */
   public readonly version$ = new BehaviorSubject<NetworkVersions>(null);
+
+  /**
+   * status$ subject
+   */
+  public readonly status$ = new BehaviorSubject<NetworkStatuses>(NetworkStatuses.Unknown);
 
   private eth: Eth.IEth = null;
 
@@ -51,9 +56,27 @@ export class Network implements INetwork {
   }
 
   /**
+   * gets status
+   */
+  public getStatus(): NetworkStatuses {
+    return this.status$.getValue();
+  }
+
+  /**
+   * sets status
+   * @param status
+   */
+  public setStatus(status: NetworkStatuses): void {
+    if (this.getStatus() !== status) {
+      this.status$.next(status);
+    }
+  }
+
+  /**
    * detects version
    */
   public async detectVersion(): Promise<NetworkVersions> {
+    this.verify(false);
     const version: any = await this.eth.net_version();
     return version || null;
   }
@@ -64,7 +87,7 @@ export class Network implements INetwork {
    * @param address
    */
   public personalSign(message: Buffer | string, address: string): Promise<string> {
-    this.verifyProvider();
+    this.verify();
 
     return this.eth.personal_sign(
       anyToHex(message, { add0x: true }),
@@ -76,15 +99,19 @@ export class Network implements INetwork {
    * gets accounts
    */
   public async getAccounts(): Promise<string[]> {
-    this.verifyProvider();
+    this.verify(false);
 
     const accounts = await this.eth.accounts();
     return accounts && accounts.length ? accounts : [];
   }
 
-  private verifyProvider(): void {
+  private verify(checkStatus: boolean = true): void {
     if (!this.eth) {
       throw errNetworkUnknownProvider;
+    }
+
+    if (checkStatus && this.getStatus() !== NetworkStatuses.Supported) {
+      throw errNetworkInvalidStatus;
     }
   }
 }

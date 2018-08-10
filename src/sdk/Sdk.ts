@@ -1,8 +1,8 @@
-import { Subject, from, of } from "rxjs";
+import { from, of, Subject } from "rxjs";
 import { catchError, map, tap } from "rxjs/operators";
 import { Api } from "../api";
 import { Member } from "../member";
-import { Network } from "../network";
+import { Network, NetworkStatuses } from "../network";
 import { ISdk, ISdkOptions } from "./interfaces";
 
 /**
@@ -23,6 +23,7 @@ export class Sdk {
     from(api.getSettings())
       .pipe(tap((settings) => {
         network.setProvider(Network.createProvider(settings.network.providerEndpoint));
+        network.setStatus(NetworkStatuses.Supported);
         network.setVersion(settings.network.version);
       }))
       .pipe(map(() => null))

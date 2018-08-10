@@ -1,12 +1,12 @@
-import { of, from, Subject } from "rxjs";
-import { mergeMap, map, filter, catchError } from "rxjs/operators";
+import { from, of, Subject } from "rxjs";
+import { catchError, filter, map, mergeMap } from "rxjs/operators";
 import { Api } from "../../api";
+import { errNetworkInvalidVersion } from "../../errors";
 import { Member } from "../../member";
-import { Network } from "../../network";
+import { Network, NetworkStatuses } from "../../network";
 import { ISdk } from "../../sdk";
-import { errNetworkInvalidVersion, errApiUnsupportedNetwork } from "../../errors";
 import { MetaMaskMessageTypes } from "./constants";
-import { IMetaMaskMessage, IMetaMaskConnectorOptions } from "./interfaces";
+import { IMetaMaskConnectorOptions, IMetaMaskMessage } from "./interfaces";
 import { TMetaMaskedWindow } from "./types";
 
 /**
@@ -41,25 +41,27 @@ export class MetaMaskConnector {
         network.setProvider(provider);
         const version = await network.detectVersion();
 
-        if (!options.api[ version ]) {
-          throw errApiUnsupportedNetwork;
-        }
-
         api.setOptions(options.api[ version ] || null);
 
-        const settings = await api.getSettings();
+        if (!options.api[ version ]) {
+          network.setStatus(NetworkStatuses.Unsupported);
+        } else {
+          const settings = await api.getSettings();
 
-        if (version !== settings.network.version) {
-          throw errNetworkInvalidVersion;
+          if (version !== settings.network.version) {
+            throw errNetworkInvalidVersion;
+          }
+
+          network.setStatus(NetworkStatuses.Supported);
         }
-
-        network.setVersion(version);
 
         const [ address ] = await network.getAccounts();
 
         if (address) {
           member.setAddress(address);
         }
+
+        network.setVersion(version);
       })()).pipe(catchError((err) => of(err)))));
 
     // selected address

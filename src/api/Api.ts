@@ -72,7 +72,7 @@ export class Api implements IApi {
 
   private buildEndpoint(protocol: "http" | "ws"): string {
     const { host, port, ssl } = this.options;
-    return `${protocol}${ssl ? "s" : ""}://${host}${port ? `:${port}` : ""}`;
+    return `${protocol}${ssl ? "s" : ""}://${host || "localhost"}${port ? `:${port}` : ""}`;
   }
 
   private async call<T = any>(req: IApiRequest): Promise<T> {
