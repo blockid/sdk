@@ -1,5 +1,6 @@
+import "cross-fetch/polyfill";
+
 import { BehaviorSubject } from "rxjs";
-import fetch, { Headers } from "cross-fetch";
 import { IMember } from "../member";
 import { jsonReplacer, jsonReviver } from "../utils";
 import { errApiUndefinedOptions } from "../errors";
@@ -71,7 +72,7 @@ export class Api implements IApi {
 
   private buildEndpoint(protocol: "http" | "ws"): string {
     const { host, port, ssl } = this.options;
-    return `${protocol}${ssl ? "s" : ""}://${host}${port ? port : ""}`;
+    return `${protocol}${ssl ? "s" : ""}://${host}${port ? `:${port}` : ""}`;
   }
 
   private async call<T = any>(req: IApiRequest): Promise<T> {
@@ -87,18 +88,30 @@ export class Api implements IApi {
       result = await mock(req);
     } else {
 
-      const { method, path, options } = req;
-      const { headers, body } = options || { headers: {}, body: {} };
+      const { path } = req;
+      let { method, options } = req;
+
+      method = method || "GET";
+      options = {
+        headers: {},
+        body: {},
+        ...(options || {}),
+      };
+
+      const { headers, body } = options;
 
       const res = await fetch(`${this.buildEndpoint("http")}/${path}`, {
-        method: method || "GET",
+        method,
         headers: new Headers({
           "Content-Type": "application/json",
-          ...(headers || {}),
+          ...headers,
         }),
-        ...(body ? {
-          body: JSON.stringify(body, jsonReplacer),
-        } : {}),
+        ...(
+          method !== "GET" &&
+          method !== "HEAD"
+            ? { body: JSON.stringify(body, jsonReplacer) }
+            : {}
+        ),
       });
 
       const text = await res.text();
