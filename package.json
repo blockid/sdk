@@ -1,7 +1,7 @@
 {
   "name": "blockid",
   "private": true,
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.7",
   "description": "Block ID JavaScript SDK",
   "author": {
     "name": "Stanislaw Glogowski",
@@ -18,7 +18,6 @@
     "url": "https://github.com/blockid/sdk-javascript/issues"
   },
   "scripts": {
-    "start:dev": "ts-node ./src/main.ts",
     "prebuild": "rimraf ./dist/*",
     "build": "tsc",
     "postbuild": "tempack ./dist/",
@@ -30,6 +29,7 @@
   },
   "dependencies": {
     "bn.js": "^4.11.8",
+    "cross-fetch": "^2.2.2",
     "ethjs": "^0.4.0",
     "keccak": "^1.4.0",
     "rxjs": "^6.2.2",
@@ -42,7 +42,6 @@
     "rimraf": "^2.6.2",
     "tempack": "0.0.1",
     "ts-jest": "^23.0.1",
-    "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
     "typescript": "^2.9.2"
   },
