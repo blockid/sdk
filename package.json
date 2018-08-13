@@ -1,7 +1,7 @@
 {
   "name": "blockid",
   "private": true,
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.17",
   "description": "Block ID JavaScript SDK",
   "author": {
     "name": "Stanislaw Glogowski",
@@ -32,6 +32,7 @@
     "cross-fetch": "^2.2.2",
     "ethjs": "^0.4.0",
     "keccak": "^1.4.0",
+    "protobufjs": "^6.8.8",
     "rxjs": "^6.2.2",
     "secp256k1": "^3.5.0"
   },

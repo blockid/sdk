@@ -1,13 +1,34 @@
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 import { NetworkVersions } from "../network";
-import { ApiStatus } from "./constants";
+import { ApiStatus, ApiMessageTypes } from "./constants";
+import { IVerifySession } from "./messages";
+import { TApiConnectionFactory } from "./types";
 
 export interface IApi {
   status$: BehaviorSubject<ApiStatus>;
+  error$: Subject<any>;
+  message$: Subject<IApiMessage>;
   setStatus(status: ApiStatus): void;
   getStatus(): ApiStatus;
   setOptions(options: IApiOptions): void;
+  reconnect(): void;
+  disconnect(): void;
   getSettings(): Promise<IApiResponseSettings>;
+  verifySession(): Promise<void>;
+}
+
+export interface IApiConnection {
+  connected$: Subject<boolean>;
+  error$: Subject<any>;
+  data$: Subject<Buffer>;
+  connect(): void;
+  disconnect(): void;
+  send(data: Buffer): void;
+}
+
+export interface IApiMessage<T = any> {
+  type: ApiMessageTypes;
+  payload?: T;
 }
 
 export interface IApiOptions {
@@ -15,6 +36,7 @@ export interface IApiOptions {
   port?: number;
   ssl?: boolean;
   mock?: (req: IApiRequest) => Promise<any>;
+  connectionFactory?: TApiConnectionFactory;
 }
 
 export interface IApiRequest {

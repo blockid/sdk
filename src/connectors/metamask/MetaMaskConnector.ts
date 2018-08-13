@@ -30,6 +30,8 @@ export class MetaMaskConnector {
     const member = new Member(network);
     const api = new Api(member);
 
+    const connectionFactory = Api.createBrowserConnectionFactory();
+
     // eth provider
     const ethProvider = this.message$
       .pipe((filter(({ type, payload }) => (
@@ -38,12 +40,18 @@ export class MetaMaskConnector {
       ))))
       .pipe(map(({ payload }) => payload))
       .pipe(mergeMap((provider) => from((async () => {
+
         network.setProvider(provider);
+
         const version = await network.detectVersion();
+        const apiOptions = options.api[ version ] || null;
 
-        api.setOptions(options.api[ version ] || null);
+        api.setOptions(apiOptions ? {
+          ...apiOptions,
+          connectionFactory,
+        } : null);
 
-        if (!options.api[ version ]) {
+        if (!apiOptions) {
           network.setStatus(NetworkStatuses.Unsupported);
         } else {
           const settings = await api.getSettings();

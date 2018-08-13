@@ -27,6 +27,10 @@ export function anyToHex(data: any = Buffer.alloc(0), { length, add0x }: IAnyToH
           result = (data as Buffer).toString("hex");
         } else if (BN.isBN(data)) {
           result = (data as BN.IBN).toString(16);
+        } else if (data instanceof Uint8Array) {
+          result = Buffer.from([
+            ...data,
+          ]).toString("hex");
         }
         break;
     }

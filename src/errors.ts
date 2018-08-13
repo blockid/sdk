@@ -1,3 +1,8 @@
+export const errApiConnectionNotReady = new Error("Api connection not ready");
+export const errApiConnectionNotVerified = new Error("Api connection not verified");
+export const errApiConnectionAleadyVerified = new Error("Api connection already verified");
+export const errApiInvalidMessageType = new Error("Invalid api message type");
+export const errApiInvalidMessagePayload = new Error("Invalid api message payload");
 export const errApiUndefinedOptions = new Error("Undefined api options");
 export const errNetworkUnknownProvider = new Error("Unknown network provider");
 export const errNetworkInvalidStatus = new Error("Invalid network status");

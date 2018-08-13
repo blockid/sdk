@@ -31,6 +31,10 @@ export function anyToBuffer(data: any = Buffer.alloc(0), { size }: IAnyToBufferO
           result = data;
         } else if (BN.isBN(data)) {
           result = (data as BN.IBN).toBuffer();
+        } else if (data instanceof Uint8Array) {
+          result = Buffer.from([
+            ...data,
+          ]);
         }
         break;
     }
