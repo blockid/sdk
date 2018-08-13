@@ -2,9 +2,9 @@ import "cross-fetch/polyfill";
 
 import { BehaviorSubject, Subject } from "rxjs";
 import {
+  errApiConnectionAleadyVerified,
   errApiConnectionNotReady,
   errApiConnectionNotVerified,
-  errApiConnectionAleadyVerified,
   errApiInvalidMessagePayload,
   errApiInvalidMessageType,
   errApiUndefinedOptions,
@@ -204,31 +204,38 @@ export class Api implements IApi {
   /**
    * verifies session
    */
-  public async verifySession(): Promise<void> {
+  public verifySession(): void {
+    (async () => {
+      switch (this.getStatus()) {
+        case ApiStatus.Verified:
+          throw errApiConnectionAleadyVerified;
+          // @ts-ignore
+          break;
 
-    switch (this.getStatus()) {
-      case ApiStatus.Verified:
-        throw errApiConnectionAleadyVerified;
-        // @ts-ignore
-        break;
+        case ApiStatus.Connected:
+          break;
 
-      case ApiStatus.Connected:
-        break;
+        default:
 
-      default:
+          throw errApiConnectionNotReady;
+      }
 
-        throw errApiConnectionNotReady;
-    }
+      const signed = await this.member.personalSign(this.sessionHash);
 
-    const signed = await this.member.personalSign(this.sessionHash);
+      this.setStatus(ApiStatus.Verifying);
 
-    this.send<IVerifySession>({
-      type: ApiMessageTypes.VerifySession,
-      payload: {
-        signed: anyToBuffer(signed),
-        member: this.member.getAddress(),
-      },
-    }, false);
+      this.send<IVerifySession>({
+        type: ApiMessageTypes.VerifySession,
+        payload: {
+          signed: anyToBuffer(signed),
+          member: this.member.getAddress(),
+        },
+      }, false);
+
+    })().catch((err) => {
+      this.setStatus(ApiStatus.Connected);
+      this.error$.next(err);
+    });
   }
 
   private buildEndpoint(protocol: "http" | "ws"): string {
@@ -281,6 +288,10 @@ export class Api implements IApi {
               this.sessionHash = anyToBuffer(hash);
               this.setStatus(ApiStatus.Connected);
               break;
+
+            case ApiMessageTypes.SessionVerified:
+              this.setStatus(ApiStatus.Verified);
+              break;
           }
 
           if (payload) {
@@ -318,6 +329,7 @@ export class Api implements IApi {
 
     switch (this.getStatus()) {
       case ApiStatus.Connected:
+      case ApiStatus.Verifying:
         if (verifiedConnectionOnly) {
           throw errApiConnectionNotVerified;
         }
@@ -332,7 +344,7 @@ export class Api implements IApi {
 
     const data = Buffer.concat([
       Buffer.from([ type ]),
-      payloadBuff,
+      anyToBuffer(payloadBuff),
     ]);
 
     this.connection.send(data);

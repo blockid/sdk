@@ -13,7 +13,7 @@ export interface IApi {
   reconnect(): void;
   disconnect(): void;
   getSettings(): Promise<IApiResponseSettings>;
-  verifySession(): Promise<void>;
+  verifySession(): void;
 }
 
 export interface IApiConnection {
