@@ -1,7 +1,6 @@
 import { BehaviorSubject, Subject } from "rxjs";
 import { NetworkVersions } from "../network";
 import { ApiStatus, ApiMessageTypes } from "./constants";
-import { IVerifySession } from "./messages";
 import { TApiConnectionFactory } from "./types";
 
 export interface IApi {
