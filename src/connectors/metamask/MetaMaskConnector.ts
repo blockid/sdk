@@ -1,6 +1,6 @@
 import { from, of, Subject } from "rxjs";
 import { catchError, filter, map, mergeMap } from "rxjs/operators";
-import { Api } from "../../api";
+import { Api, ApiStatus } from "../../api";
 import { errNetworkInvalidVersion } from "../../errors";
 import { Member } from "../../member";
 import { Network, NetworkStatuses } from "../../network";
@@ -81,6 +81,13 @@ export class MetaMaskConnector {
       .pipe(map(({ payload }) => payload as string))
       .pipe(mergeMap((address) => from((async () => {
         member.setAddress(address || null);
+
+        switch (api.getStatus()) {
+          case ApiStatus.Verifying:
+          case ApiStatus.Verified:
+            api.setStatus(ApiStatus.Connected);
+            break;
+        }
       })()).pipe(catchError((err) => of(err)))));
 
     of(ethProvider, selectedAddress)
