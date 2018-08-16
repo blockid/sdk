@@ -10,8 +10,14 @@ import {
   errApiUndefinedOptions,
 } from "../errors";
 import { IMember } from "../member";
-import { anyToBuffer, jsonReplacer, jsonReviver } from "../utils";
-import { ApiMessageTypes, ApiStatus } from "./constants";
+import {
+  anyToBuffer,
+  jsonReplacer,
+  jsonReviver,
+  createProtoBufHelper,
+  IProtoBufHelper,
+} from "../utils";
+import { ApiMessageTypes, ApiStatus, API_PROTO_BUF_DEFINITION } from "./constants";
 import {
   IApi,
   IApiConnection,
@@ -20,7 +26,7 @@ import {
   IApiRequest,
   IApiResponseSettings,
 } from "./interfaces";
-import { ISessionCreated, IVerifySession, SessionCreated, VerifySession } from "./messagePayloads";
+import { ApiMessagePayloads } from "./namespaces";
 import { TApiConnectionFactory } from "./types";
 
 /**
@@ -34,7 +40,7 @@ export class Api implements IApi {
   public static createBrowserConnectionFactory(): TApiConnectionFactory {
     let result: TApiConnectionFactory = null;
 
-    if (WebSocket) {
+    if (typeof WebSocket !== "undefined") {
       result = (endpoint: string) => {
         const connected$ = new Subject<boolean>();
         const error$ = new Subject<any>();
@@ -115,6 +121,8 @@ export class Api implements IApi {
 
     return result;
   }
+
+  private static protoBufHelper: IProtoBufHelper = createProtoBufHelper(API_PROTO_BUF_DEFINITION);
 
   /**
    * status$ subject
@@ -224,7 +232,7 @@ export class Api implements IApi {
 
       this.setStatus(ApiStatus.Verifying);
 
-      this.send<IVerifySession>({
+      this.send<ApiMessagePayloads.IVerifySession>({
         type: ApiMessageTypes.VerifySession,
         payload: {
           signed: anyToBuffer(signed),
@@ -283,8 +291,8 @@ export class Api implements IApi {
 
           switch (type) {
             case ApiMessageTypes.SessionCreated:
-              payload = SessionCreated.decode(payloadBuff);
-              const { hash } = payload as ISessionCreated;
+              payload = Api.protoBufHelper.decode<ApiMessagePayloads.ISessionCreated>(type, payloadBuff);
+              const { hash } = payload;
               this.sessionHash = anyToBuffer(hash);
               this.setStatus(ApiStatus.Connected);
               break;
@@ -316,7 +324,7 @@ export class Api implements IApi {
 
     switch (type) {
       case ApiMessageTypes.VerifySession:
-        payloadBuff = VerifySession.encode(payload).finish() as any;
+        payloadBuff = Api.protoBufHelper.encode(type, payload);
         break;
 
       default:
