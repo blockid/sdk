@@ -55,12 +55,12 @@ describe("connectors", () => {
         error$
           .subscribe(done);
 
-        member
-          .address$
+        network
+          .version$
           .pipe(filter((value) => !!value))
-          .subscribe((address) => {
+          .subscribe(() => {
             expect(network.getVersion()).toBe(NetworkVersions.Rinkeby);
-            expect(address).toBe(ADDRESS);
+            expect(member.getAddress()).toBe(ADDRESS);
             done();
           });
 
