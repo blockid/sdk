@@ -21,15 +21,17 @@ const namespaces = new Map<string, Namespace>();
  * @param types
  */
 export function createProtoBufHelper({ name, types }: IProtoBufDefinition): IProtoBufHelper {
+  let namespace: Namespace = namespaces.get(name);
+
   if (!namespaces.has(name)) {
-    namespaces.set(name, globalRoot.define(name));
-  }
+    namespace = globalRoot.define(name);
+    namespaces.set(name, namespace);
 
-  const namespace = namespaces.get(name);
-
-  for (const key in types) {
-    if (types[ key ]) {
-      namespace.add(Type.fromJSON(`Type${key}`, types[ key ]));
+    for (const key in types) {
+      if (types[ key ]) {
+        const typeName = `Type${key}`;
+        namespace.add(Type.fromJSON(typeName, types[ key ]));
+      }
     }
   }
 
