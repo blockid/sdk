@@ -122,7 +122,7 @@ export class Api implements IApi {
     return result;
   }
 
-  private static protoBufHelper: IProtoBufHelper = createProtoBufHelper(API_PROTO_BUF_DEFINITION);
+  private static protoBufHelper: IProtoBufHelper = null;
 
   /**
    * status$ subject
@@ -151,6 +151,10 @@ export class Api implements IApi {
    * @param options
    */
   constructor(private member: IMember, options: IApiOptions = null) {
+    if (!Api.protoBufHelper) {
+      Api.protoBufHelper = createProtoBufHelper(API_PROTO_BUF_DEFINITION);
+    }
+
     this.setOptions(options);
   }
 
