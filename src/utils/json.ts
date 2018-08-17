@@ -21,7 +21,7 @@ export function jsonReplacer(key: string, value: any): any {
     value = {
       type: "Buffer",
       data: [
-        ...value,
+        ...data,
       ],
     };
   } else if (BN.isBN(data)) {

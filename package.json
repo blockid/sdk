@@ -1,7 +1,7 @@
 {
   "name": "blockid",
   "private": true,
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "description": "Block ID JavaScript SDK",
   "author": {
     "name": "Stanislaw Glogowski",

@@ -304,6 +304,14 @@ export class Api implements IApi {
             case ApiMessageTypes.SessionVerified:
               this.setStatus(ApiStatus.Verified);
               break;
+
+            case ApiMessageTypes.Identity:
+              payload = Api.protoBufHelper.decode<ApiMessagePayloads.IIdentity>(type, payloadBuff);
+              break;
+
+            case ApiMessageTypes.IdentityMember:
+              payload = Api.protoBufHelper.decode<ApiMessagePayloads.IIdentityMember>(type, payloadBuff);
+              break;
           }
 
           if (payload) {
