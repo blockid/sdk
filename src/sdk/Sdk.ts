@@ -1,39 +1,42 @@
-import { from, of, Subject } from "rxjs";
-import { catchError, map, tap } from "rxjs/operators";
+import { Subject, from } from "rxjs";
+import { filter, tap } from "rxjs/operators";
 import { Api } from "../api";
 import { Member } from "../member";
-import { Network, NetworkStatuses } from "../network";
+import { Network } from "../network";
+import { createNetworkHttpProvider, createApiWebSocketConnectionFactory } from "../utils";
 import { ISdk, ISdkOptions } from "./interfaces";
 
 /**
  * Sdk
  */
-export class Sdk {
+export class Sdk implements ISdk {
+
+  public error$ = new Subject<any>();
+  public network = new Network();
+  public member = new Member(this.network);
+  public api = new Api(this.member);
 
   /**
-   * creates
+   * constructor
    * @param options
    */
-  public static create(options: ISdkOptions): ISdk {
-    const error$ = new Subject<any>();
-    const network = new Network();
-    const member = new Member(network, options.member || {});
-    const api = new Api(member, options.api);
+  constructor(options: ISdkOptions) {
+    this.api.setOptions({
+      ...options.api,
+      connectionFactory: createApiWebSocketConnectionFactory(),
+    });
 
-    from(api.getSettings())
-      .pipe(tap((settings) => {
-        network.setProvider(Network.createProvider(settings.network.providerEndpoint));
-        network.setStatus(NetworkStatuses.Supported);
-        network.setVersion(settings.network.version);
-      }))
-      .pipe(map(() => null))
-      .pipe(catchError((err) => of(err)));
-
-    return {
-      error$,
-      api,
-      member,
-      network,
-    };
+    from(this.api.getSettings().catch(() => null))
+      .pipe(
+        filter((value) => !!value),
+        tap((settings) => {
+          {
+            const { providerEndpoint, version } = settings.network;
+            this.network.setProvider(createNetworkHttpProvider(providerEndpoint));
+            this.network.version = version;
+          }
+        }),
+      )
+      .subscribe();
   }
 }

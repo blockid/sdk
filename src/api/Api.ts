@@ -1,128 +1,36 @@
+import {
+  anyToBuffer,
+  decodeWsMessage, encodeWsMessage,
+  jsonReplacer,
+  jsonReviver,
+  IWsMessage,
+  WsMessagePayloads,
+  WsMessageTypes,
+} from "blockid-core";
 import "cross-fetch/polyfill";
 
 import { BehaviorSubject, Subject } from "rxjs";
+import { IMember } from "../member";
+import { ApiStatus } from "./constants";
 import {
-  errApiConnectionAleadyVerified,
+  errApiConnectionAlreadyVerified,
   errApiConnectionNotReady,
   errApiConnectionNotVerified,
-  errApiInvalidMessagePayload,
-  errApiInvalidMessageType,
   errApiUndefinedOptions,
-} from "../errors";
-import { IMember } from "../member";
-import {
-  anyToBuffer,
-  jsonReplacer,
-  jsonReviver,
-  createProtoBufHelper,
-  IProtoBufHelper,
-} from "../utils";
-import { ApiMessageTypes, ApiStatus, API_PROTO_BUF_DEFINITION } from "./constants";
+} from "./errors";
 import {
   IApi,
   IApiConnection,
-  IApiMessage,
   IApiOptions,
   IApiRequest,
-  IApiResponseSettings,
 } from "./interfaces";
-import { ApiMessagePayloads } from "./namespaces";
+import { ApiResponses } from "./namespaces";
 import { TApiConnectionFactory } from "./types";
 
 /**
  * Api
  */
 export class Api implements IApi {
-
-  /**
-   * creates browser connection factory
-   */
-  public static createBrowserConnectionFactory(): TApiConnectionFactory {
-    let result: TApiConnectionFactory = null;
-
-    if (typeof WebSocket !== "undefined") {
-      result = (endpoint: string) => {
-        const connected$ = new Subject<boolean>();
-        const error$ = new Subject<any>();
-        const data$ = new Subject<Buffer>();
-
-        let ws: WebSocket = null;
-
-        const onOpen = () => {
-          ws.removeEventListener("open", onOpen);
-          ws.removeEventListener("close", onOpenError);
-          ws.removeEventListener("error", onOpenError);
-
-          ws.addEventListener("close", onClose);
-          ws.addEventListener("error", onError);
-
-          connected$.next(true);
-        };
-
-        const onOpenError = () => {
-          ws.removeEventListener("open", onOpen);
-          ws.removeEventListener("close", onOpenError);
-          ws.removeEventListener("error", onOpenError);
-          ws.removeEventListener("message", onMessage);
-
-          connected$.next(false);
-        };
-
-        const onMessage = ({ data }: WebSocketEventMap["message"]) => {
-          data$.next(Buffer.from(data));
-        };
-
-        const onClose = () => {
-          connected$.next(false);
-        };
-
-        const onError = (event: WebSocketEventMap["error"]) => {
-          error$.next(event);
-        };
-
-        const connect = () => {
-          ws = new WebSocket(endpoint);
-          ws.binaryType = "arraybuffer";
-
-          connected$.next(null);
-
-          ws.addEventListener("open", onOpen);
-          ws.addEventListener("close", onOpenError);
-          ws.addEventListener("error", onOpenError);
-          ws.addEventListener("message", onMessage);
-        };
-
-        const disconnect = () => {
-          connected$.unsubscribe();
-          error$.unsubscribe();
-          data$.unsubscribe();
-
-          if (ws) {
-            ws.close(100);
-          }
-        };
-
-        const send = (data: Buffer) => {
-          if (ws) {
-            ws.send(data);
-          }
-        };
-
-        return {
-          connected$,
-          error$,
-          data$,
-          connect,
-          disconnect,
-          send,
-        };
-      };
-    }
-
-    return result;
-  }
-
-  private static protoBufHelper: IProtoBufHelper = null;
 
   /**
    * status$ subject
@@ -137,7 +45,7 @@ export class Api implements IApi {
   /**
    * message$ subject
    */
-  public message$ = new Subject<IApiMessage>();
+  public message$ = new Subject<IWsMessage>();
 
   private options: IApiOptions = null;
   private connectionFactory: TApiConnectionFactory = null;
@@ -151,26 +59,22 @@ export class Api implements IApi {
    * @param options
    */
   constructor(private member: IMember, options: IApiOptions = null) {
-    if (!Api.protoBufHelper) {
-      Api.protoBufHelper = createProtoBufHelper(API_PROTO_BUF_DEFINITION);
-    }
-
     this.setOptions(options);
   }
 
   /**
-   * gets status
+   * status getter
    */
-  public getStatus(): ApiStatus {
+  public get status(): ApiStatus {
     return this.status$.getValue();
   }
 
   /**
-   * sets status
+   * status setter
    * @param status
    */
-  public setStatus(status: ApiStatus): void {
-    if (this.getStatus() !== status) {
+  public set status(status: ApiStatus) {
+    if (this.status !== status) {
       this.status$.next(status);
     }
   }
@@ -205,8 +109,8 @@ export class Api implements IApi {
   /**
    * gets settings
    */
-  public getSettings(): Promise<IApiResponseSettings> {
-    return this.call<IApiResponseSettings>({
+  public getSettings(): Promise<ApiResponses.IGetSettings> {
+    return this.call({
       path: "settings",
     });
   }
@@ -217,10 +121,11 @@ export class Api implements IApi {
    * verifies session
    */
   public verifySession(): void {
+    const status = this.status;
     (async () => {
-      switch (this.getStatus()) {
+      switch (this.status) {
         case ApiStatus.Verified:
-          throw errApiConnectionAleadyVerified;
+          throw errApiConnectionAlreadyVerified;
           // @ts-ignore
           break;
 
@@ -228,24 +133,22 @@ export class Api implements IApi {
           break;
 
         default:
-
           throw errApiConnectionNotReady;
       }
 
-      const signed = await this.member.personalSign(this.sessionHash);
+      const signature = await this.member.personalSign(this.sessionHash);
 
-      this.setStatus(ApiStatus.Verifying);
+      this.status = ApiStatus.Verifying;
 
-      this.send<ApiMessagePayloads.IVerifySession>({
-        type: ApiMessageTypes.VerifySession,
+      this.send<WsMessagePayloads.ISignedSession>({
+        type: WsMessageTypes.VerifySession,
         payload: {
-          signed: anyToBuffer(signed),
-          member: this.member.getAddress(),
+          signature: anyToBuffer(signature),
         },
       }, false);
 
     })().catch((err) => {
-      this.setStatus(ApiStatus.Connected);
+      this.status = status;
       this.error$.next(err);
     });
   }
@@ -276,11 +179,11 @@ export class Api implements IApi {
         .subscribe((connected) => {
           switch (connected) {
             case null:
-              this.setStatus(ApiStatus.Connecting);
+              this.status = ApiStatus.Connecting;
               break;
 
             case false:
-              this.setStatus(ApiStatus.Disconnected);
+              this.status = ApiStatus.Disconnected;
               break;
           }
 
@@ -289,36 +192,23 @@ export class Api implements IApi {
 
       data$
         .subscribe((data) => {
-          const type = data[ 0 ];
-          const payloadBuff = data.slice(1);
-          let payload: any = null;
+          const message = decodeWsMessage(data);
 
-          switch (type) {
-            case ApiMessageTypes.SessionCreated:
-              payload = Api.protoBufHelper.decode<ApiMessagePayloads.ISessionCreated>(type, payloadBuff);
-              const { hash } = payload;
-              this.sessionHash = anyToBuffer(hash);
-              this.setStatus(ApiStatus.Connected);
-              break;
+          if (message) {
+            const { type, payload } = message;
+            switch (type) {
+              case WsMessageTypes.SessionCreated:
+                const { hash } = payload as WsMessagePayloads.ISession;
+                this.sessionHash = anyToBuffer(hash);
+                this.status = ApiStatus.Connected;
+                break;
 
-            case ApiMessageTypes.SessionVerified:
-              this.setStatus(ApiStatus.Verified);
-              break;
+              case WsMessageTypes.SessionVerified:
+                this.status = ApiStatus.Verified;
+                break;
+            }
 
-            case ApiMessageTypes.Identity:
-              payload = Api.protoBufHelper.decode<ApiMessagePayloads.IIdentity>(type, payloadBuff);
-              break;
-
-            case ApiMessageTypes.IdentityMember:
-              payload = Api.protoBufHelper.decode<ApiMessagePayloads.IIdentityMember>(type, payloadBuff);
-              break;
-          }
-
-          if (payload) {
-            this.message$.next({
-              type,
-              payload,
-            });
+            this.message$.next(message);
           }
         });
 
@@ -327,27 +217,18 @@ export class Api implements IApi {
 
       this.connection.connect();
     } else {
-      this.setStatus(ApiStatus.Disconnected);
+      this.status = ApiStatus.Disconnected;
     }
   }
 
-  private send<T = any>({ type, payload }: IApiMessage<T>, verifiedConnectionOnly: boolean = true): void {
-    let payloadBuff: Buffer = null;
+  private send<T = any>(message: IWsMessage<T>, verifiedConnectionOnly: boolean = true): void {
+    const data: Buffer = encodeWsMessage(message);
 
-    switch (type) {
-      case ApiMessageTypes.VerifySession:
-        payloadBuff = Api.protoBufHelper.encode(type, payload);
-        break;
-
-      default:
-        throw errApiInvalidMessageType;
+    if (!data) {
+      return;
     }
 
-    if (!payloadBuff) {
-      throw errApiInvalidMessagePayload;
-    }
-
-    switch (this.getStatus()) {
+    switch (this.status) {
       case ApiStatus.Connected:
       case ApiStatus.Verifying:
         if (verifiedConnectionOnly) {
@@ -362,20 +243,15 @@ export class Api implements IApi {
         throw errApiConnectionNotReady;
     }
 
-    const data = Buffer.concat([
-      Buffer.from([ type ]),
-      anyToBuffer(payloadBuff),
-    ]);
-
     this.connection.send(data);
   }
 
-  private async call<T = any>(req: IApiRequest): Promise<T> {
+  private async call(req: IApiRequest): Promise<any> {
     if (!this.options) {
       throw errApiUndefinedOptions;
     }
 
-    let result: T = null;
+    let result: any = null;
 
     const { mock } = this.options;
 

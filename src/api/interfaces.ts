@@ -1,18 +1,18 @@
 import { BehaviorSubject, Subject } from "rxjs";
-import { NetworkVersions } from "../network";
-import { ApiStatus, ApiMessageTypes } from "./constants";
+import { IWsMessage } from "blockid-core";
+import { ApiStatus } from "./constants";
 import { TApiConnectionFactory } from "./types";
+import { ApiResponses } from "./namespaces";
 
 export interface IApi {
   status$: BehaviorSubject<ApiStatus>;
   error$: Subject<any>;
-  message$: Subject<IApiMessage>;
-  setStatus(status: ApiStatus): void;
-  getStatus(): ApiStatus;
+  message$: Subject<IWsMessage>;
+  status: ApiStatus;
   setOptions(options: IApiOptions): void;
   reconnect(): void;
   disconnect(): void;
-  getSettings(): Promise<IApiResponseSettings>;
+  getSettings(): Promise<ApiResponses.IGetSettings>;
   verifySession(): void;
 }
 
@@ -23,11 +23,6 @@ export interface IApiConnection {
   connect(): void;
   disconnect(): void;
   send(data: Buffer): void;
-}
-
-export interface IApiMessage<T = any> {
-  type: ApiMessageTypes;
-  payload?: T;
 }
 
 export interface IApiOptions {
@@ -44,20 +39,5 @@ export interface IApiRequest {
   options?: {
     headers?: { [ key: string ]: any };
     body?: { [ key: string ]: any };
-  };
-}
-
-export interface IApiResponseSettings {
-  ens: {
-    serviceAddress: string;
-    resolverAddress: string;
-    supportedDomains: string[];
-  };
-  identity: {
-    registryAddress: string;
-  };
-  network: {
-    version: NetworkVersions;
-    providerEndpoint: string;
   };
 }

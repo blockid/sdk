@@ -1,4 +1,4 @@
-# Block ID JavaScript SDK
+# Block ID SDK
 
 [![NPM version][npm-image]][npm-url]
 

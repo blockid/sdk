@@ -1,17 +1,16 @@
 {
-  "package": {
-    "mergeWith": {
-      "main": "./index.js",
-      "types": "./index.d.ts"
-    },
-    "omit": [
-      "private",
-      "scripts",
-      "devDependencies",
-      "jest"
-    ]
+  "mergePackageWith": {
+    "version": "0.1.0-alpha.25",
+    "main": "./index.js",
+    "types": "./index.d.ts"
   },
-  "files": [
+  "omitPackageKeys": [
+    "private",
+    "devDependencies",
+    "scripts",
+    "jest"
+  ],
+  "copyFiles": [
     "README.md"
   ]
 }

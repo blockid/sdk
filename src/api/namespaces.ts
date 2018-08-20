@@ -1,27 +1,18 @@
-export namespace ApiMessagePayloads {
-  export interface ISessionCreated {
-    hash: Buffer;
-  }
+import { NetworkVersions } from "blockid-core";
 
-  export interface IVerifySession {
-    signed: Buffer;
-    member: string;
-  }
-
-  export interface IIdentity {
-    address: string;
-    balance?: Buffer;
-    createdAt?: number;
-    updatedAt?: number;
-  }
-
-  export interface IIdentityMember {
-    identity: string;
-    address: string;
-    purpose?: string;
-    limit?: Buffer;
-    limited?: boolean;
-    createdAt?: number;
-    updatedAt?: number;
+export namespace ApiResponses {
+  export interface IGetSettings {
+    ens: {
+      serviceAddress: string;
+      resolverAddress: string;
+      supportedDomains: string[];
+    };
+    identity: {
+      registryAddress: string;
+    };
+    network: {
+      version: NetworkVersions;
+      providerEndpoint: string;
+    };
   }
 }

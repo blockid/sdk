@@ -1,9 +1,13 @@
 import { BehaviorSubject } from "rxjs";
-import { sign } from "secp256k1";
-import { anyToHex, anyToBuffer, hashPersonalMessage, privateKeyToAddress } from "../utils";
+import {
+  anyToHex,
+  anyToBuffer,
+  signPersonalMessage,
+  privateKeyToAddress,
+} from "blockid-core";
 import { INetwork } from "../network";
-import { errMemberUndefinedAddress } from "../errors";
-import { IMember, IMemberOptions } from "./interfaces";
+import { errMemberUndefinedAddress } from "./errors";
+import { IMember } from "./interfaces";
 
 /**
  * Member
@@ -20,41 +24,39 @@ export class Member implements IMember {
   /**
    * constructor
    * @param network
-   * @param options
    */
-  constructor(private network: INetwork, options: IMemberOptions = {}) {
-    const { privateKey } = options;
-    this.setPrivateKey(privateKey);
+  constructor(private network: INetwork) {
+    //
   }
 
   /**
-   * gets address
+   * address getter
    */
-  public getAddress(): string {
+  public get address(): string {
     return this.address$.getValue();
   }
 
   /**
-   * sets address
+   * address setter
    * @param address
    */
-  public setAddress(address: string) {
-    if (this.getAddress() !== address) {
+  public set address(address: string) {
+    if (this.address !== address) {
       this.address$.next(address);
     }
   }
 
   /**
-   * sets private key
+   * restores from private key
    * @param privateKey
    */
-  public setPrivateKey(privateKey: Buffer | string = null): void {
+  public restoreFromPrivateKey(privateKey: Buffer | string = null): void {
     if (privateKey) {
       this.privateKey = anyToBuffer(privateKey);
-      this.setAddress(privateKeyToAddress(this.privateKey));
+      this.address = privateKeyToAddress(this.privateKey);
     } else {
       this.privateKey = null;
-      this.setAddress(null);
+      this.address = null;
     }
   }
 
@@ -65,20 +67,17 @@ export class Member implements IMember {
   public async personalSign(message: Buffer | string): Promise<string> {
     let result: string = null;
 
-    if (!this.getAddress()) {
+    if (!this.address) {
       throw errMemberUndefinedAddress;
     }
 
     if (this.privateKey) {
-      const messageHash = hashPersonalMessage(message);
-      const { signature, recovery } = sign(messageHash, this.privateKey);
-
-      result = (
-        anyToHex(signature, { add0x: true }) +
-        anyToHex(recovery + 27, { length: 2 })
-      );
+      result = anyToHex(
+        signPersonalMessage(message, this.privateKey), {
+          add0x: true,
+        });
     } else {
-      result = await this.network.personalSign(message, this.getAddress());
+      result = await this.network.personalSign(message, this.address);
     }
 
     return result;

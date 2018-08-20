@@ -1,22 +1,14 @@
 import * as Eth from "ethjs";
 import { BehaviorSubject } from "rxjs";
-import { errNetworkUnknownProvider, errNetworkInvalidStatus } from "../errors";
-import { anyToHex } from "../utils";
-import { NetworkStatuses, NetworkVersions } from "./constants";
+import { NetworkVersions, anyToHex } from "blockid-core";
+import { NetworkStatuses } from "./constants";
 import { INetwork } from "./interfaces";
+import { errNetworkUnknownProvider, errNetworkInvalidStatus } from "./errors";
 
 /**
  * Network
  */
 export class Network implements INetwork {
-
-  /**
-   * creates provider
-   * @param endpoint
-   */
-  public static createProvider(endpoint: string): any {
-    return new Eth.HttpProvider(endpoint);
-  }
 
   /**
    * version$ subject
@@ -31,43 +23,51 @@ export class Network implements INetwork {
   private eth: Eth.IEth = null;
 
   /**
-   * sets provider
+   * constructor
    * @param provider
    */
-  public setProvider(provider: any) {
-    this.eth = new Eth(provider);
+  constructor(provider: any = null) {
+    this.setProvider(provider);
   }
 
   /**
-   * gets version
+   * sets provider
+   * @param provider
    */
-  public getVersion(): NetworkVersions {
+  public setProvider(provider: any = null) {
+    this.eth = provider ? new Eth(provider) : null;
+  }
+
+  /**
+   * version getter
+   */
+  public get version(): NetworkVersions {
     return this.version$.getValue();
   }
 
   /**
-   * sets version
+   * version setter
    * @param version
    */
-  public setVersion(version: NetworkVersions): void {
-    if (this.getVersion() !== version) {
+  public set version(version: NetworkVersions) {
+    if (this.version !== version) {
       this.version$.next(version);
     }
   }
 
   /**
-   * gets status
+   * status getter
    */
-  public getStatus(): NetworkStatuses {
+  public get status(): NetworkStatuses {
     return this.status$.getValue();
   }
 
   /**
-   * sets status
+   * status setter
    * @param status
    */
-  public setStatus(status: NetworkStatuses): void {
-    if (this.getStatus() !== status) {
+  public setStatus(status: NetworkStatuses) {
+    if (this.status !== status) {
       this.status$.next(status);
     }
   }
@@ -95,22 +95,15 @@ export class Network implements INetwork {
     );
   }
 
-  /**
-   * gets accounts
-   */
-  public async getAccounts(): Promise<string[]> {
-    this.verify(false);
-
-    const accounts = await this.eth.accounts();
-    return accounts && accounts.length ? accounts : [];
-  }
-
   private verify(checkStatus: boolean = true): void {
     if (!this.eth) {
       throw errNetworkUnknownProvider;
     }
 
-    if (checkStatus && this.getStatus() !== NetworkStatuses.Supported) {
+    if (
+      checkStatus &&
+      this.status !== NetworkStatuses.Supported
+    ) {
       throw errNetworkInvalidStatus;
     }
   }

@@ -1,6 +1,6 @@
 import { Subject } from "rxjs";
 import { IApi, IApiOptions } from "../api";
-import { IMember, IMemberOptions } from "../member";
+import { IMember } from "../member";
 import { INetwork } from "../network";
 
 export interface ISdk {
@@ -12,5 +12,4 @@ export interface ISdk {
 
 export interface ISdkOptions {
   api: IApiOptions;
-  member?: IMemberOptions;
 }
