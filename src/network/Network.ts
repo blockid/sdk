@@ -1,9 +1,17 @@
+/* tslint:disable:variable-name */
+
+import { IBN } from "bn.js";
+import { ICallOptions, ISendTransactionOptions } from "ethjs";
+import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
-import { BehaviorSubject } from "rxjs";
-import { NetworkVersions, anyToHex } from "blockid-core";
-import { NetworkStatuses } from "./constants";
-import { INetwork } from "./interfaces";
-import { errNetworkUnknownProvider, errNetworkInvalidStatus } from "./errors";
+import { anyToBuffer, anyToHex, UniqueBehaviorSubject } from "../shared";
+import { NetworkVersions, NetworkStatuses, NETWORK_NAMES } from "./constants";
+import {
+  INetwork,
+  INetworkBlock,
+  INetworkMessageOptions, INetworkTransactionOptions,
+  INetworkTransactionReceipt,
+} from "./interfaces";
 
 /**
  * Network
@@ -13,36 +21,39 @@ export class Network implements INetwork {
   /**
    * version$ subject
    */
-  public readonly version$ = new BehaviorSubject<NetworkVersions>(null);
+  public version$ = new UniqueBehaviorSubject<NetworkVersions>(NetworkVersions.Unknown);
+
+  /**
+   * name$ subject
+   */
+  public name$ = new UniqueBehaviorSubject<string>(NETWORK_NAMES[ NetworkVersions.Unknown ]);
 
   /**
    * status$ subject
    */
-  public readonly status$ = new BehaviorSubject<NetworkStatuses>(NetworkStatuses.Unknown);
+  public status$ = new UniqueBehaviorSubject<NetworkStatuses>(NetworkStatuses.Unknown);
 
-  private eth: Eth.IEth = null;
-
-  /**
-   * constructor
-   * @param provider
-   */
-  constructor(provider: any = null) {
-    this.setProvider(provider);
-  }
+  private eth: Eth.IEth;
 
   /**
-   * sets provider
+   * Network
    * @param provider
    */
-  public setProvider(provider: any = null) {
-    this.eth = provider ? new Eth(provider) : null;
+  constructor(provider: Eth.IProvider) {
+    this.eth = new Eth(provider);
+
+    this.version$
+      .pipe(
+        map((version) => NETWORK_NAMES[ version ] || null),
+      )
+      .subscribe(this.name$);
   }
 
   /**
    * version getter
    */
   public get version(): NetworkVersions {
-    return this.version$.getValue();
+    return this.version$.value;
   }
 
   /**
@@ -50,61 +61,229 @@ export class Network implements INetwork {
    * @param version
    */
   public set version(version: NetworkVersions) {
-    if (this.version !== version) {
-      this.version$.next(version);
-    }
+    this.version$.next(version);
+  }
+
+  /**
+   * name getter
+   */
+  public get name(): string {
+    return this.name$.value;
   }
 
   /**
    * status getter
    */
   public get status(): NetworkStatuses {
-    return this.status$.getValue();
+    return this.status$.value;
   }
 
   /**
    * status setter
    * @param status
    */
-  public setStatus(status: NetworkStatuses) {
-    if (this.status !== status) {
-      this.status$.next(status);
-    }
+  public set status(status: NetworkStatuses) {
+    this.status$.next(status);
   }
 
   /**
    * detects version
    */
-  public async detectVersion(): Promise<NetworkVersions> {
-    this.verify(false);
-    const version: any = await this.eth.net_version();
-    return version || null;
+  public detectVersion(): Promise<NetworkVersions> {
+    return this
+      .eth
+      .net_version()
+      .then((version) => NETWORK_NAMES[ version ]
+        ? version
+        : null,
+      )
+      .catch(() => null);
   }
 
   /**
-   * personal sign
+   * gets primary account
+   */
+  public getPrimaryAccount(): Promise<string> {
+    return this
+      .eth
+      .accounts()
+      .catch(() => [])
+      .then((accounts) => Array.isArray(accounts) && accounts[ 0 ]
+        ? accounts[ 0 ]
+        : null,
+      );
+  }
+
+  /**
+   * gets gas price
+   */
+  public getGasPrice(): Promise<IBN> {
+    return this.eth
+      .gasPrice();
+  }
+
+  /**
+   * gets current block number
+   */
+  public getBlockNumber(): Promise<IBN> {
+    return this.eth
+      .blockNumber();
+  }
+
+  /**
+   * gets block
+   */
+  public async getBlock(number: IBN = null): Promise<INetworkBlock> {
+    let result: INetworkBlock = null;
+    const response = await this.eth
+      .getBlockByNumber(number || "latest", true);
+
+    if (response) {
+      const { hash, number, transactions } = response;
+
+      result = {
+        hash,
+        number,
+        transactions: transactions.map(({ hash, from, to, nonce, value, gas, gasPrice, input }) => ({
+          hash,
+          from,
+          to,
+          nonce,
+          value,
+          gas,
+          gasPrice,
+          input,
+        })),
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * gets transaction receipt
+   */
+  public async getTransactionReceipt(hash: string): Promise<INetworkTransactionReceipt> {
+    let result: INetworkTransactionReceipt = null;
+    const response = await this.eth
+      .getTransactionReceipt(hash);
+
+    if (response) {
+      const {
+        cumulativeGasUsed,
+        gasUsed,
+        logs,
+        status,
+      } = response;
+
+      result = {
+        cumulativeGasUsed,
+        gasUsed,
+        logs,
+        success: status === "0x1",
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * calls message
+   * @param options
+   */
+  public callMessage({ to, data }: INetworkMessageOptions): Promise<string> {
+    const options: ICallOptions = {
+      to,
+      data: anyToHex(data, { add0x: true, defaults: "" }),
+    };
+
+    return this
+      .eth
+      .call(options, "latest");
+  }
+
+  /**
+   * sends transaction
+   * @param options
+   */
+  public sendTransaction({ to, value, gas, gasPrice, data }: INetworkTransactionOptions): Promise<string> {
+    const options: ISendTransactionOptions = {
+      to,
+    };
+
+    if (value) {
+      options.value = anyToHex(value, { add0x: true });
+    }
+
+    if (gas) {
+      options.gas = anyToHex(gas, { add0x: true });
+    }
+
+    if (gasPrice) {
+      options.gasPrice = anyToHex(gasPrice, { add0x: true });
+    }
+
+    if (data) {
+      options.data = anyToHex(data, { add0x: true, defaults: "" });
+    }
+
+    return this.eth
+      .sendTransaction(options);
+  }
+
+  /**
+   * estimates transaction
+   * @param options
+   */
+  public estimateTransaction({ to, value, gas, gasPrice, data }: Partial<INetworkTransactionOptions>): Promise<IBN> {
+    const options: Partial<ISendTransactionOptions> = {};
+
+    if (to) {
+      options.to = anyToHex(to, { add0x: true });
+    }
+
+    if (value) {
+      options.value = anyToHex(value, { add0x: true });
+    }
+
+    if (gas) {
+      options.gas = anyToHex(gas, { add0x: true });
+    }
+
+    if (gasPrice) {
+      options.gasPrice = anyToHex(gasPrice, { add0x: true });
+    }
+
+    if (data) {
+      options.data = anyToHex(data, { add0x: true, defaults: "" });
+    }
+
+    return this.eth
+      .estimateGas(options, "latest");
+  }
+
+  /**
+   * sends raw transaction
+   * @param data
+   */
+  public sendRawTransaction(data: string | Buffer): Promise<string> {
+    return this.eth
+      .sendRawTransaction(anyToHex(data, { add0x: true, defaults: "" }));
+  }
+
+  /**
+   * signs personal message
    * @param message
    * @param address
    */
-  public personalSign(message: Buffer | string, address: string): Promise<string> {
-    this.verify();
-
-    return this.eth.personal_sign(
-      anyToHex(message, { add0x: true }),
+  public async signPersonalMessage(message: string | Buffer, address: string): Promise<Buffer> {
+    const signature = this.eth.personal_sign(
+      anyToHex(message, { add0x: true, defaults: "" }),
       address,
     );
-  }
 
-  private verify(checkStatus: boolean = true): void {
-    if (!this.eth) {
-      throw errNetworkUnknownProvider;
-    }
-
-    if (
-      checkStatus &&
-      this.status !== NetworkStatuses.Supported
-    ) {
-      throw errNetworkInvalidStatus;
-    }
+    return anyToBuffer(signature, {
+      defaults: null,
+    });
   }
 }

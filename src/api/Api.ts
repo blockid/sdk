@@ -1,31 +1,20 @@
+import "cross-fetch/polyfill";
+
+import { Subject } from "rxjs";
+import { filter, map, tap } from "rxjs/operators";
+import { IDevice } from "../device";
+import { UniqueBehaviorSubject } from "../shared";
 import {
-  anyToBuffer,
-  decodeWsMessage, encodeWsMessage,
-  jsonReplacer,
-  jsonReviver,
+  decodeWsMessage,
+  encodeWsMessage,
   IWsMessage,
   WsMessagePayloads,
   WsMessageTypes,
-} from "blockid-core";
-import "cross-fetch/polyfill";
-
-import { BehaviorSubject, Subject } from "rxjs";
-import { IMember } from "../member";
+} from "../ws";
+import { ApiConnection } from "./ApiConnection";
 import { ApiStatus } from "./constants";
-import {
-  errApiConnectionAlreadyVerified,
-  errApiConnectionNotReady,
-  errApiConnectionNotVerified,
-  errApiUndefinedOptions,
-} from "./errors";
-import {
-  IApi,
-  IApiConnection,
-  IApiOptions,
-  IApiRequest,
-} from "./interfaces";
-import { ApiResponses } from "./namespaces";
-import { TApiConnectionFactory } from "./types";
+import { IApi, IApiOptions } from "./interfaces";
+import { errApiInvalidStatus } from "./errors";
 
 /**
  * Api
@@ -33,40 +22,113 @@ import { TApiConnectionFactory } from "./types";
 export class Api implements IApi {
 
   /**
-   * status$ subject
+   * options subject
    */
-  public status$ = new BehaviorSubject<ApiStatus>(ApiStatus.Disconnected);
+  public options$ = new UniqueBehaviorSubject<IApiOptions>();
 
   /**
-   * error$ subject
+   * status subject
    */
-  public error$ = new Subject<any>();
+  public status$ = new UniqueBehaviorSubject<ApiStatus>(ApiStatus.Disconnected);
 
   /**
-   * message$ subject
+   * ws message subject
    */
-  public message$ = new Subject<IWsMessage>();
+  public wsMessage$ = new Subject<IWsMessage>();
 
-  private options: IApiOptions = null;
-  private connectionFactory: TApiConnectionFactory = null;
-  private connection: IApiConnection = null;
+  private connection = new ApiConnection();
 
   private sessionHash: Buffer = null;
 
   /**
    * constructor
-   * @param member
+   * @param device
    * @param options
    */
-  constructor(private member: IMember, options: IApiOptions = null) {
-    this.setOptions(options);
+  constructor(private device: IDevice, options: IApiOptions = null) {
+    this
+      .options$
+      .subscribe(() => this.connect());
+
+    const { connected$, data$ } = this.connection;
+
+    connected$
+      .pipe(
+        tap(() => {
+          this.sessionHash = null;
+        }),
+        map((connected) => {
+          let result: ApiStatus = null;
+          switch (connected) {
+            case null:
+              result = ApiStatus.Connecting;
+              break;
+            case false:
+              result = ApiStatus.Disconnected;
+              break;
+          }
+          return result;
+        }),
+        filter((value) => !!value),
+      )
+      .subscribe(this.status$);
+
+    data$
+      .pipe(
+        map(decodeWsMessage),
+      )
+      .subscribe(this.wsMessage$);
+
+    this
+      .wsMessage$
+      .pipe(
+        map(({ type, payload }) => {
+          let result: ApiStatus = null;
+          switch (type) {
+            case WsMessageTypes.SessionCreated:
+              const { hash } = payload as WsMessagePayloads.ISession;
+              this.sessionHash = hash;
+              result = ApiStatus.Connected;
+              break;
+
+            case WsMessageTypes.SessionVerified:
+              result = ApiStatus.Verified;
+              break;
+          }
+          return result;
+        }),
+        filter((value) => !!value),
+      )
+      .subscribe(this.status$);
+
+    this.options = options;
+  }
+
+  /**
+   * options getter
+   */
+  public get options(): IApiOptions {
+    return this.options$.value;
+  }
+
+  /**
+   * options setter
+   * @param options
+   */
+  public set options(options: IApiOptions) {
+    this.options$.next(options ? {
+      host: "localhost",
+      port: null,
+      ssl: false,
+      ...options,
+    } : null);
   }
 
   /**
    * status getter
    */
   public get status(): ApiStatus {
-    return this.status$.getValue();
+    return this.status$.value;
   }
 
   /**
@@ -74,221 +136,49 @@ export class Api implements IApi {
    * @param status
    */
   public set status(status: ApiStatus) {
-    if (this.status !== status) {
-      this.status$.next(status);
-    }
+    this.status$.next(status);
   }
 
   /**
-   * sets options
-   * @param options
+   * connects
    */
-  public setOptions(options: IApiOptions): void {
-    if (this.options !== options) {
-      this.options = options || null;
-      this.createConnection();
-    }
+  public connect(): void {
+    this
+      .connection
+      .connect(this.getEndpoint("ws"));
   }
-
-  /**
-   * reconnects
-   */
-  public reconnect(): void {
-    //
-  }
-
-  /**
-   * disconnects
-   */
-  public disconnect(): void {
-    //
-  }
-
-  // HTTP methods
-
-  /**
-   * gets settings
-   */
-  public getSettings(): Promise<ApiResponses.IGetSettings> {
-    return this.call({
-      path: "settings",
-    });
-  }
-
-  // WS methods
 
   /**
    * verifies session
    */
-  public verifySession(): void {
-    const status = this.status;
-    (async () => {
-      switch (this.status) {
-        case ApiStatus.Verified:
-          throw errApiConnectionAlreadyVerified;
-          // @ts-ignore
-          break;
+  public async verifySession(): Promise<void> {
+    const signature = await this.device.signPersonalMessage(this.sessionHash);
 
-        case ApiStatus.Connected:
-          break;
-
-        default:
-          throw errApiConnectionNotReady;
-      }
-
-      const signature = await this.member.personalSign(this.sessionHash);
-
-      this.status = ApiStatus.Verifying;
-
-      this.send<WsMessagePayloads.ISignedSession>({
-        type: WsMessageTypes.VerifySession,
-        payload: {
-          signature: anyToBuffer(signature),
-        },
-      }, false);
-
-    })().catch((err) => {
-      this.status = status;
-      this.error$.next(err);
-    });
+    this.send<WsMessagePayloads.ISignedSession>({
+      type: WsMessageTypes.VerifySession,
+      payload: {
+        signature,
+      },
+    }, ApiStatus.Connected);
   }
 
-  private buildEndpoint(protocol: "http" | "ws"): string {
-    const { host, port, ssl } = this.options;
-    return `${protocol}${ssl ? "s" : ""}://${host || "localhost"}${port ? `:${port}` : ""}`;
-  }
+  private getEndpoint(protocol: "ws" | "http"): string {
+    let result: string = null;
 
-  private createConnection(): void {
-    if (this.connection) {
-      this.connection.disconnect();
-    }
-
-    const connectionFactory = this.options && this.options.connectionFactory
-      ? this.options.connectionFactory
-      : null;
-
-    this.connectionFactory = connectionFactory;
-    this.connection = connectionFactory
-      ? connectionFactory(this.buildEndpoint("ws"))
-      : null;
-
-    if (this.connection) {
-      const { connected$, error$, data$ } = this.connection;
-
-      connected$
-        .subscribe((connected) => {
-          switch (connected) {
-            case null:
-              this.status = ApiStatus.Connecting;
-              break;
-
-            case false:
-              this.status = ApiStatus.Disconnected;
-              break;
-          }
-
-          this.sessionHash = null;
-        });
-
-      data$
-        .subscribe((data) => {
-          const message = decodeWsMessage(data);
-
-          if (message) {
-            const { type, payload } = message;
-            switch (type) {
-              case WsMessageTypes.SessionCreated:
-                const { hash } = payload as WsMessagePayloads.ISession;
-                this.sessionHash = anyToBuffer(hash);
-                this.status = ApiStatus.Connected;
-                break;
-
-              case WsMessageTypes.SessionVerified:
-                this.status = ApiStatus.Verified;
-                break;
-            }
-
-            this.message$.next(message);
-          }
-        });
-
-      error$
-        .subscribe(this.error$);
-
-      this.connection.connect();
-    } else {
-      this.status = ApiStatus.Disconnected;
-    }
-  }
-
-  private send<T = any>(message: IWsMessage<T>, verifiedConnectionOnly: boolean = true): void {
-    const data: Buffer = encodeWsMessage(message);
-
-    if (!data) {
-      return;
-    }
-
-    switch (this.status) {
-      case ApiStatus.Connected:
-      case ApiStatus.Verifying:
-        if (verifiedConnectionOnly) {
-          throw errApiConnectionNotVerified;
-        }
-        break;
-
-      case ApiStatus.Verified:
-        break;
-
-      default:
-        throw errApiConnectionNotReady;
-    }
-
-    this.connection.send(data);
-  }
-
-  private async call(req: IApiRequest): Promise<any> {
-    if (!this.options) {
-      throw errApiUndefinedOptions;
-    }
-
-    let result: any = null;
-
-    const { mock } = this.options;
-
-    if (mock) {
-      result = await mock(req);
-    } else {
-
-      const { path } = req;
-      let { method, options } = req;
-
-      method = method || "GET";
-      options = {
-        headers: {},
-        body: {},
-        ...(options || {}),
-      };
-
-      const { headers, body } = options;
-
-      const res = await fetch(`${this.buildEndpoint("http")}/${path}`, {
-        method,
-        headers: new Headers({
-          "Content-Type": "application/json",
-          ...headers,
-        }),
-        ...(
-          method !== "GET" &&
-          method !== "HEAD"
-            ? { body: JSON.stringify(body, jsonReplacer) }
-            : {}
-        ),
-      });
-
-      const text = await res.text();
-      result = JSON.parse(text, jsonReviver);
+    if (this.options) {
+      const { host, port, ssl } = this.options;
+      result = `${protocol}${ssl ? "s" : ""}://${host}${port ? `:${port}` : ""}`;
     }
 
     return result;
+  }
+
+  private send<T = any>(message: IWsMessage<T>, requiredStatus = ApiStatus.Verified): void {
+    if (this.status !== requiredStatus) {
+      throw errApiInvalidStatus;
+    }
+
+    const data = encodeWsMessage(message);
+    this.connection.send(data);
   }
 }

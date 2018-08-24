@@ -1,13 +1,68 @@
-import { BehaviorSubject } from "rxjs";
-import { NetworkVersions } from "blockid-core";
-import { NetworkStatuses } from "./constants";
+/* tslint:disable:variable-name */
+
+import { IBN } from "bn.js";
+import { IProvider } from "ethjs";
+import { TUniqueBehaviorSubject } from "../shared";
+import { NetworkStatuses, NetworkVersions } from "./constants";
+
+export interface INetworkProvider extends IProvider {
+  endpoint$: TUniqueBehaviorSubject<string>;
+  endpoint: string;
+}
 
 export interface INetwork {
-  version$: BehaviorSubject<NetworkVersions>;
-  status$: BehaviorSubject<NetworkStatuses>;
+  version$: TUniqueBehaviorSubject<NetworkVersions>;
   version: NetworkVersions;
+  name$: TUniqueBehaviorSubject<string>;
+  name: string;
+  status$: TUniqueBehaviorSubject<NetworkStatuses>;
   status: NetworkStatuses;
-  setProvider(provider?: any): void;
   detectVersion(): Promise<NetworkVersions>;
-  personalSign(message: Buffer | string, address: string): Promise<string>;
+  getPrimaryAccount(): Promise<string>;
+  getGasPrice(): Promise<IBN>;
+  getBlockNumber(): Promise<IBN>;
+  getBlock(number?: IBN): Promise<INetworkBlock>;
+  getTransactionReceipt(hash: string): Promise<INetworkTransactionReceipt>;
+  callMessage(options: INetworkMessageOptions): Promise<string>;
+  sendTransaction(options: INetworkTransactionOptions): Promise<string>;
+  estimateTransaction(options: Partial<INetworkTransactionOptions>): Promise<IBN>;
+  sendRawTransaction(data: string | Buffer): Promise<string>;
+  signPersonalMessage(message: string | Buffer, address: string): Promise<Buffer>;
+}
+
+export interface INetworkMessageOptions {
+  to: string;
+  data: string | Buffer;
+}
+
+export interface INetworkTransactionOptions {
+  to: string;
+  value?: number | IBN;
+  gas?: number | IBN;
+  gasPrice?: number | IBN;
+  data?: string | Buffer;
+}
+
+export interface INetworkBlock {
+  number: IBN;
+  hash: string;
+  transactions: INetworkBlockTransaction[];
+}
+
+export interface INetworkBlockTransaction {
+  hash: string;
+  from: string;
+  to: string;
+  nonce: IBN;
+  value: IBN;
+  gas: IBN;
+  gasPrice: IBN;
+  input: string;
+}
+
+export interface INetworkTransactionReceipt {
+  cumulativeGasUsed: IBN;
+  gasUsed: IBN;
+  logs: any[];
+  success: boolean;
 }

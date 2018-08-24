@@ -1,2 +1,2 @@
-export const errNetworkUnknownProvider = new Error("Unknown network provider");
-export const errNetworkInvalidStatus = new Error("Invalid network status");
+export const errNetworkUnknownProvideEndpoint = new Error("Unknown network provide endpoint");
+export const errNetworkUnsupportedProviderMethod = new Error("Unsupported provider method");
