@@ -16,7 +16,8 @@
     "url": "https://github.com/blockid/sdk/issues"
   },
   "scripts": {
-    "prebuild": "npm run lint && npm run test && rimraf ./dist/*",
+    "clean": "rimraf ./dist/*",
+    "prebuild": "npm run lint && npm run test && npm run clean",
     "build": "tsc",
     "postbuild": "tempack ./dist/",
     "lint": "tslint src/**/*.ts",
