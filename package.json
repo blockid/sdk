@@ -17,9 +17,11 @@
   },
   "scripts": {
     "clean": "rimraf ./dist/*",
-    "prebuild": "npm run lint && npm run test && npm run clean",
-    "build": "tsc",
-    "postbuild": "tempack ./dist/",
+    "precompile": "npm run clean",
+    "compile": "tsc",
+    "postcompile": "tempack ./dist/",
+    "prebuild": "npm run lint && npm run test",
+    "build": "npm run compile",
     "lint": "tslint src/**/*.ts",
     "test": "jest",
     "test:watch": "jest --watch --verbose false"
