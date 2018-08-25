@@ -5,3 +5,4 @@ export * from "./ecdsa";
 export * from "./hex";
 export * from "./json";
 export * from "./personalMessage";
+export * from "./units";
