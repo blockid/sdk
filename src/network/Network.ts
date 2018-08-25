@@ -1,6 +1,6 @@
 /* tslint:disable:variable-name */
 
-import { IBN } from "bn.js";
+import * as BN from "bn.js";
 import { ICallOptions, ISendTransactionOptions } from "ethjs";
 import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
@@ -115,9 +115,35 @@ export class Network implements INetwork {
   }
 
   /**
+   * gets target balance
+   * @param target
+   */
+  public async getBalance(target: any): Promise<BN.IBN> {
+    let result: BN.IBN = new BN(0);
+    let address: string = null;
+
+    switch (typeof target) {
+      case "string":
+        address = (target as string) || null;
+        break;
+      case "object":
+        if (target && typeof target.address === "string") {
+          address = target.address || null;
+        }
+        break;
+    }
+
+    if (address) {
+      result = await this.eth.getBalance(address, "latest");
+    }
+
+    return result;
+  }
+
+  /**
    * gets gas price
    */
-  public getGasPrice(): Promise<IBN> {
+  public getGasPrice(): Promise<BN.IBN> {
     return this.eth
       .gasPrice();
   }
@@ -125,7 +151,7 @@ export class Network implements INetwork {
   /**
    * gets current block number
    */
-  public getBlockNumber(): Promise<IBN> {
+  public getBlockNumber(): Promise<BN.IBN> {
     return this.eth
       .blockNumber();
   }
@@ -133,7 +159,7 @@ export class Network implements INetwork {
   /**
    * gets block
    */
-  public async getBlock(number: IBN = null): Promise<INetworkBlock> {
+  public async getBlock(number: BN.IBN = null): Promise<INetworkBlock> {
     let result: INetworkBlock = null;
     const response = await this.eth
       .getBlockByNumber(number || "latest", true);
@@ -235,7 +261,7 @@ export class Network implements INetwork {
    * estimates transaction
    * @param options
    */
-  public estimateTransaction({ to, value, gas, gasPrice, data }: Partial<INetworkTransactionOptions>): Promise<IBN> {
+  public estimateTransaction({ to, value, gas, gasPrice, data }: Partial<INetworkTransactionOptions>): Promise<BN.IBN> {
     const options: Partial<ISendTransactionOptions> = {};
 
     if (to) {

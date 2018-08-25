@@ -19,6 +19,7 @@ export interface INetwork {
   status: NetworkStatuses;
   detectVersion(): Promise<NetworkVersions>;
   getPrimaryAccount(): Promise<string>;
+  getBalance(target: any): Promise<IBN>;
   getGasPrice(): Promise<IBN>;
   getBlockNumber(): Promise<IBN>;
   getBlock(number?: IBN): Promise<INetworkBlock>;

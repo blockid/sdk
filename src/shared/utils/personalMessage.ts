@@ -23,6 +23,12 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
             buffers.push(anyToBuffer(!!arg));
             break;
 
+          case "address":
+            buffers.push(anyToBuffer(arg, {
+              size: 20,
+            }));
+            break;
+
           case "bytes":
           case "string":
             buffers.push(anyToBuffer(arg));
@@ -60,9 +66,8 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
  * @param message
  */
 export function hashPersonalMessage(message: Buffer | string): Buffer {
-  const hash = sha3(anyToBuffer(message));
   return sha3(
-    anyToBuffer("\x19Ethereum Signed Message:\n" + hash.length),
-    hash,
+    anyToBuffer("\x19Ethereum Signed Message:\n32"),
+    sha3(message),
   );
 }

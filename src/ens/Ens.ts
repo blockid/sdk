@@ -1,7 +1,13 @@
 import { INetwork } from "../network";
 import { UniqueBehaviorSubject, AbstractAddressHolder } from "../shared";
 import { IEns, IEnsNode, IEnsRecord } from "./interfaces";
-import { getEnsLabelHash, getEnsNameHash, prepareEnsName, splitEnsName } from "./utils";
+import {
+  getEnsLabelHash,
+  getEnsNameHash,
+  getEnsNameInfo,
+  prepareEnsName,
+  splitEnsName,
+} from "./utils";
 import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } from "./contracts";
 
 /**
@@ -73,12 +79,11 @@ export class Ens extends AbstractAddressHolder implements IEns {
   public async lookup(name: string): Promise<IEnsRecord> {
     let result: IEnsRecord = null;
 
-    name = prepareEnsName(name);
+    const info = getEnsNameInfo(name);
 
-    if (name) {
-      const { label, rootNodeName } = splitEnsName(name);
+    if (info) {
 
-      const supported = this.supportedRootNodes.some(({ name }) => name === rootNodeName);
+      const supported = this.supportedRootNodes.some(({ name }) => name === info.rootNode.name);
       const nameHash = getEnsNameHash(name);
 
       let resolverContract: IEnsResolverContract = null;
@@ -97,14 +102,7 @@ export class Ens extends AbstractAddressHolder implements IEns {
         result = {
           supported,
           address: await resolverContract.resolveAddress(nameHash),
-          name,
-          nameHash,
-          label,
-          labelHash: getEnsLabelHash(label),
-          rootNode: {
-            name: rootNodeName,
-            nameHash: getEnsNameHash(rootNodeName),
-          },
+          ...info,
         };
       }
     }

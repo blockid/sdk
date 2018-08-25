@@ -159,9 +159,9 @@ export class KeyPair extends AbstractAddressHolder implements IKeyPair {
     const hash = hashPersonalMessage(message);
     const { recovery, signature } = sign(hash, this.privateKey);
 
-    return Buffer.from([
-      anyToBuffer(recovery + 27),
+    return Buffer.concat([
       signature,
+      anyToBuffer(recovery + 27),
     ]);
   }
 

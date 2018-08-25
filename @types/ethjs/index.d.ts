@@ -15,6 +15,7 @@ declare module "ethjs" {
       net_version(): Promise<string>;
       accounts(): Promise<string[]>;
       personal_sign(message: string, address: string): Promise<string>;
+      getBalance(address: string, block: TBlockParam): Promise<IBN>;
       blockNumber(): Promise<IBN>;
       gasPrice(): Promise<IBN>;
       getBlockByNumber(block: TBlockParam, responseTransactions: boolean): Promise<IBlockByNumberResponse>;

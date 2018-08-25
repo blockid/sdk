@@ -28,6 +28,51 @@ export function prepareEnsName(...parts: string[]): string {
 }
 
 /**
+ * get ens mame info
+ * @param name
+ */
+export function getEnsNameInfo(name: string): {
+  name: string;
+  nameHash: string;
+  label: string;
+  labelHash: string;
+  rootNode: {
+    name: string;
+    nameHash: string;
+  }
+} {
+  name = prepareEnsName(name);
+  if (!name) {
+    return null;
+  }
+
+  let rootNode: {
+    name: string;
+    nameHash: string;
+  } = null;
+
+  let labelHash: string = null;
+
+  const { label, rootNodeName } = splitEnsName(name);
+
+  if (label && rootNodeName) {
+    labelHash = getEnsLabelHash(label);
+    rootNode = {
+      name: rootNodeName,
+      nameHash: getEnsNameHash(rootNodeName),
+    };
+  }
+
+  return {
+    name,
+    nameHash: getEnsNameHash(name),
+    label,
+    labelHash,
+    rootNode,
+  };
+}
+
+/**
  * splits ens name
  * @param name
  */
