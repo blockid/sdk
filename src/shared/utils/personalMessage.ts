@@ -60,9 +60,9 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
  * @param message
  */
 export function hashPersonalMessage(message: Buffer | string): Buffer {
-  const messageBuff = anyToBuffer(message);
+  const hash = sha3(anyToBuffer(message));
   return sha3(
-    anyToBuffer("\x19Ethereum Signed Message:\n" + messageBuff.length),
-    messageBuff,
+    anyToBuffer("\x19Ethereum Signed Message:\n" + hash.length),
+    hash,
   );
 }

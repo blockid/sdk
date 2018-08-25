@@ -4,7 +4,7 @@ import { IBN } from "bn.js";
 import { ICallOptions, ISendTransactionOptions } from "ethjs";
 import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
-import { anyToBuffer, anyToHex, UniqueBehaviorSubject } from "../shared";
+import { anyToBuffer, anyToHex, sha3, UniqueBehaviorSubject } from "../shared";
 import { NetworkVersions, NetworkStatuses, NETWORK_NAMES } from "./constants";
 import {
   INetwork,
@@ -277,8 +277,9 @@ export class Network implements INetwork {
    * @param address
    */
   public async signPersonalMessage(message: string | Buffer, address: string): Promise<Buffer> {
+    const hash = sha3(message);
     const signature = this.eth.personal_sign(
-      anyToHex(message, { add0x: true, defaults: "" }),
+      anyToHex(hash, { add0x: true, defaults: "" }),
       address,
     );
 
