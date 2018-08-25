@@ -3,11 +3,7 @@ import { sha3, anyToHex } from "../shared";
 
 const SEPARATOR = ".";
 
-/**
- * prepares ens mame
- * @param name
- */
-export function prepareEnsName(name: string): string {
+function normalize(name: string): string {
   name = toAscii(name, {
     transitional: true,
     useStd3ASCII: true,
@@ -21,6 +17,14 @@ export function prepareEnsName(name: string): string {
   }
 
   return name || null;
+}
+
+/**
+ * prepares ens mame
+ * @param parts
+ */
+export function prepareEnsName(...parts: string[]): string {
+  return normalize(parts.join(SEPARATOR));
 }
 
 /**

@@ -15,7 +15,7 @@ export class UniqueBehaviorSubject<T> extends BehaviorSubject<T> {
     const next = this.next.bind(this);
 
     this.next = (value: T) => {
-      const current = this.value;
+      const current = this.getValue();
 
       if (current === value) {
         return;
@@ -34,12 +34,12 @@ export class UniqueBehaviorSubject<T> extends BehaviorSubject<T> {
           ]),
         ];
 
-        if (keys.every((key) => current[ key ] !== value[ key ])) {
+        if (keys.every((key) => current[ key ] === value[ key ])) {
           return;
         }
       }
 
-      next(next);
+      next(value);
     };
   }
 }
