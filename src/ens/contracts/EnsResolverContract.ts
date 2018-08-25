@@ -5,7 +5,7 @@ import { IEnsResolverContract } from "./interfaces";
 import abi from "./EnsResolverAbi";
 
 /**
- * Ens resolver
+ * Ens resolver contract
  */
 export class EnsResolverContract extends Contract implements IEnsResolverContract {
 
