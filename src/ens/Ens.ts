@@ -2,11 +2,8 @@ import { INetwork } from "../network";
 import { UniqueBehaviorSubject, AbstractAddressHolder } from "../shared";
 import { IEns, IEnsNode, IEnsRecord } from "./interfaces";
 import {
-  getEnsLabelHash,
   getEnsNameHash,
   getEnsNameInfo,
-  prepareEnsName,
-  splitEnsName,
 } from "./utils";
 import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } from "./contracts";
 
