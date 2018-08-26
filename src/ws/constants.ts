@@ -55,19 +55,24 @@ const wsMessagePayloadNamespace = Namespace
               id: 2,
               rule: "optional",
             },
-            ensNameHash: {
+            balance: {
               type: "bytes",
               id: 3,
               rule: "optional",
             },
+            ensNameHash: {
+              type: "bytes",
+              id: 4,
+              rule: "optional",
+            },
             createdAt: {
               type: "uint32",
-              id: 4,
+              id: 5,
               rule: "optional",
             },
             updatedAt: {
               type: "uint32",
-              id: 5,
+              id: 6,
               rule: "optional",
             },
           },
@@ -128,6 +133,7 @@ export const wsMessagePayloadBytesMapper: { [ key: string ]: any } = {
   purpose: String,
   manager: String,
   nonce: BN,
+  balance: BN,
   limit: BN,
 };
 

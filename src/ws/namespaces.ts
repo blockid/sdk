@@ -12,6 +12,7 @@ export namespace WsMessagePayloads {
   export interface IIdentity {
     address: string;
     nonce?: IBN;
+    balance?: IBN;
     ensNameHash?: string;
     createdAt?: number;
     updatedAt?: number;
