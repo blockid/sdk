@@ -1,6 +1,6 @@
 import { INetwork } from "../network";
-import { UniqueBehaviorSubject, AbstractAddressHolder } from "../shared";
-import { IEns, IEnsNode, IEnsRecord } from "./interfaces";
+import { AbstractOptionsHolder } from "../shared";
+import { IEns, IEnsOptions, IEnsRecord, IEnsNode } from "./interfaces";
 import {
   getEnsNameHash,
   getEnsNameInfo,
@@ -10,17 +10,7 @@ import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } 
 /**
  * Ens
  */
-export class Ens extends AbstractAddressHolder implements IEns {
-
-  /**
-   * resolver address subject
-   */
-  public resolverAddress$ = new UniqueBehaviorSubject<string>();
-
-  /**
-   * supported root nodes subject
-   */
-  public supportedRootNodes$ = new UniqueBehaviorSubject<IEnsNode[]>([]);
+export class Ens extends AbstractOptionsHolder<IEnsOptions> implements IEns {
 
   private readonly contract: IEnsContract;
   private readonly resolverContract: IEnsResolverContract;
@@ -28,45 +18,31 @@ export class Ens extends AbstractAddressHolder implements IEns {
   /**
    * constructor
    * @param network
+   * @param options
    */
-  constructor(private network: INetwork) {
-    super();
+  constructor(private network: INetwork, options: IEnsOptions = null) {
+    super(options);
 
     this.contract = new EnsContract(network);
     this.resolverContract = new EnsResolverContract(network);
 
-    this.address$.subscribe(this.contract.address$);
-    this.resolverAddress$.subscribe(this.resolverContract.address$);
+    this
+      .options$
+      .subscribe(({ address, resolverAddress }) => {
+        this.contract.address = address;
+        this.resolverContract.address = resolverAddress;
+      });
   }
 
   /**
-   * resolver address getter
+   * checks if root node is supported
+   * @param rootNode
    */
-  public get resolverAddress(): string {
-    return this.resolverAddress$.value;
-  }
-
-  /**
-   * registry address setter
-   * @param resolverAddress
-   */
-  public set resolverAddress(resolverAddress: string) {
-    this.resolverAddress$.next(resolverAddress || null);
-  }
-
-  /**
-   * supported root nodes getter
-   */
-  public get supportedRootNodes(): IEnsNode[] {
-    return this.supportedRootNodes$.value;
-  }
-
-  /**
-   * supported root nodes setter
-   * @param supportedRootNodes
-   */
-  public set supportedRootNodes(supportedRootNodes: IEnsNode[]) {
-    this.supportedRootNodes$.next(supportedRootNodes || []);
+  public isRootNodeSupported(rootNode: Partial<IEnsNode>): boolean {
+    return rootNode && this.options.supportedRootNodes.some(({ name, nameHash }) => (
+      name === rootNode.name ||
+      nameHash === rootNode.nameHash
+    ));
   }
 
   /**
@@ -74,13 +50,15 @@ export class Ens extends AbstractAddressHolder implements IEns {
    * @param name
    */
   public async lookup(name: string): Promise<IEnsRecord> {
+    this.verifyOptions();
+
     let result: IEnsRecord = null;
 
     const info = getEnsNameInfo(name);
 
     if (info) {
 
-      const supported = this.supportedRootNodes.some(({ name }) => name === info.rootNode.name);
+      const supported = this.isRootNodeSupported(info.rootNode);
       const nameHash = getEnsNameHash(name);
 
       let resolverContract: IEnsResolverContract = null;
@@ -105,5 +83,13 @@ export class Ens extends AbstractAddressHolder implements IEns {
     }
 
     return result;
+  }
+
+  protected prepareOptions(options: IEnsOptions): IEnsOptions {
+    return options ? options : {
+      address: null,
+      resolverAddress: null,
+      supportedRootNodes: [],
+    };
   }
 }

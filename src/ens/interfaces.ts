@@ -1,11 +1,14 @@
-import { TUniqueBehaviorSubject, IAbstractAddressHolder } from "../shared";
+import { IAbstractOptionsHolder } from "../shared";
 
-export interface IEns extends IAbstractAddressHolder {
-  resolverAddress$: TUniqueBehaviorSubject<string>;
-  resolverAddress: string;
-  supportedRootNodes$: TUniqueBehaviorSubject<IEnsNode[]>;
-  supportedRootNodes: IEnsNode[];
+export interface IEns extends IAbstractOptionsHolder<IEnsOptions> {
+  isRootNodeSupported(rootNode: Partial<IEnsNode>): boolean;
   lookup(name: string): Promise<IEnsRecord>;
+}
+
+export interface IEnsOptions {
+  address: string;
+  resolverAddress: string;
+  supportedRootNodes: IEnsNode[];
 }
 
 export interface IEnsNode {

@@ -4,10 +4,14 @@ import { sha3, anyToHex } from "../shared";
 const SEPARATOR = ".";
 
 function normalize(name: string): string {
-  name = toAscii(name, {
-    transitional: true,
-    useStd3ASCII: true,
-  });
+  try {
+    name = toAscii(name.toLowerCase(), {
+      transitional: true,
+      useStd3ASCII: true,
+    });
+  } catch (err) {
+    name = null;
+  }
 
   if (name) {
     name
@@ -29,9 +33,9 @@ export function prepareEnsName(...parts: string[]): string {
 
 /**
  * get ens mame info
- * @param name
+ * @param parts
  */
-export function getEnsNameInfo(name: string): {
+export function getEnsNameInfo(...parts: string[]): {
   name: string;
   nameHash: string;
   label: string;
@@ -41,7 +45,7 @@ export function getEnsNameInfo(name: string): {
     nameHash: string;
   }
 } {
-  name = prepareEnsName(name);
+  const name = prepareEnsName(...parts);
   if (!name) {
     return null;
   }

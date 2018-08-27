@@ -1,3 +1,4 @@
+import { IBN } from "bn.js";
 import { AbstractAddressHolder } from "../shared";
 import { INetwork, INetworkTransactionOptions } from "../network";
 import { KeyPair } from "../keyPair";
@@ -59,6 +60,20 @@ export class Device extends AbstractAddressHolder implements IDevice {
   }
 
   /**
+   * gets balance
+   */
+  public getBalance(): Promise<IBN> {
+    return this.network.getBalance(this);
+  }
+
+  /**
+   * gets transaction count
+   */
+  public getTransactionCount(): Promise<IBN> {
+    return this.network.getTransactionCount(this);
+  }
+
+  /**
    * sends transaction
    * @param options
    */
@@ -67,13 +82,19 @@ export class Device extends AbstractAddressHolder implements IDevice {
 
     let result: string = null;
 
+    const nonce = await this.getTransactionCount();
+
     if (
       this.keyPair.canSign &&
       this.address === this.keyPair.address
     ) {
       // TODO: sign and send raw transaction
     } else {
-      result = await this.network.sendTransaction(options);
+      result = await this.network.sendTransaction({
+        ...options,
+        nonce,
+        from: this.address,
+      });
     }
 
     return result;

@@ -20,6 +20,7 @@ export interface INetwork {
   detectVersion(): Promise<NetworkVersions>;
   getPrimaryAccount(): Promise<string>;
   getBalance(target: any): Promise<IBN>;
+  getTransactionCount(target: any): Promise<IBN>;
   getGasPrice(): Promise<IBN>;
   getBlockNumber(): Promise<IBN>;
   getBlock(number?: IBN): Promise<INetworkBlock>;
@@ -37,8 +38,10 @@ export interface INetworkMessageOptions {
 }
 
 export interface INetworkTransactionOptions {
+  from?: string;
   to: string;
   value?: number | IBN;
+  nonce?: number | IBN;
   gas?: number | IBN;
   gasPrice?: number | IBN;
   data?: string | Buffer;

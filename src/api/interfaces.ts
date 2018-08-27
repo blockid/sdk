@@ -1,16 +1,19 @@
 import { Subject } from "rxjs";
-import { TUniqueBehaviorSubject } from "../shared/rx";
+import { TUniqueBehaviorSubject, IAbstractOptionsHolder } from "../shared";
 import { IWsMessage } from "../ws";
 import { ApiStatus } from "./constants";
+import { ApiResponses } from "./namespaces";
 
-export interface IApi {
-  options$: TUniqueBehaviorSubject<IApiOptions>;
-  options: IApiOptions;
+export interface IApi extends IAbstractOptionsHolder<IApiOptions> {
   status$: TUniqueBehaviorSubject<ApiStatus>;
   status: ApiStatus;
   wsMessage$: Subject<IWsMessage>;
   connect(): void;
   verifySession(): Promise<void>;
+  getSettings(): Promise<ApiResponses.ISettings>;
+  getIdentity(identity: string): Promise<ApiResponses.IIdentity>;
+  getMembers(identity: string): Promise<ApiResponses.IMember[]>;
+  getMember(identity: string, member: string): Promise<ApiResponses.IMember>;
 }
 
 export interface IApiOptions {
@@ -26,4 +29,13 @@ export interface IApiConnection {
   connect(endpoint: string): void;
   disconnect(emit?: boolean): void;
   send(data: Buffer): void;
+}
+
+export interface IApiRequest {
+  method?: string;
+  path: string;
+  options?: {
+    headers?: { [ key: string ]: any };
+    body?: { [ key: string ]: any };
+  };
 }

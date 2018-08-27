@@ -12,14 +12,14 @@ describe.skip("ens", () => {
     describe("lookup()", () => {
 
       it("should returns taken supported record", async () => {
-        const ens = new Ens(network);
-
-        ens.address = ADDRESS;
-        ens.resolverAddress = RESOLVER_ADDRESS;
-        ens.supportedRootNodes = [ {
-          name: "blockid.test",
-          nameHash: getEnsNameHash("blockid.test"),
-        } ];
+        const ens = new Ens(network, {
+          address: ADDRESS,
+          resolverAddress: RESOLVER_ADDRESS,
+          supportedRootNodes: [ {
+            name: "blockid.test",
+            nameHash: getEnsNameHash("blockid.test"),
+          } ],
+        });
 
         const record = await ens.lookup("admin.blockid.test");
 

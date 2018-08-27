@@ -44,9 +44,8 @@ export class Contract extends AbstractAddressHolder implements IContract {
     protected device: IDevice = null,
     address: string = null,
   ) {
-    super();
+    super(address);
 
-    this.address = address;
     this.logDecoder = logDecoder(abi);
 
     for (const abiItem of abi) {
@@ -63,6 +62,19 @@ export class Contract extends AbstractAddressHolder implements IContract {
           break;
       }
     }
+  }
+
+  /**
+   * gets contract at address
+   * @param address
+   */
+  public at(address: string): IContract {
+    return new Contract(
+      this.abi,
+      this.network,
+      this.device,
+      this.address,
+    );
   }
 
   /**

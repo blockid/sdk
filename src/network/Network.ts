@@ -120,21 +120,25 @@ export class Network implements INetwork {
    */
   public async getBalance(target: any): Promise<BN.IBN> {
     let result: BN.IBN = new BN(0);
-    let address: string = null;
-
-    switch (typeof target) {
-      case "string":
-        address = (target as string) || null;
-        break;
-      case "object":
-        if (target && typeof target.address === "string") {
-          address = target.address || null;
-        }
-        break;
-    }
+    const address: string = this.targetToAddress(target);
 
     if (address) {
       result = await this.eth.getBalance(address, "latest");
+    }
+
+    return result;
+  }
+
+  /**
+   * gets transaction count
+   * @param target
+   */
+  public async getTransactionCount(target: any): Promise<BN.IBN> {
+    let result: BN.IBN = new BN(0);
+    const address: string = this.targetToAddress(target);
+
+    if (address) {
+      result = await this.eth.getTransactionCount(address, "pending");
     }
 
     return result;
@@ -232,13 +236,18 @@ export class Network implements INetwork {
    * sends transaction
    * @param options
    */
-  public sendTransaction({ to, value, gas, gasPrice, data }: INetworkTransactionOptions): Promise<string> {
+  public sendTransaction({ from, to, nonce, value, gas, gasPrice, data }: INetworkTransactionOptions): Promise<string> {
     const options: ISendTransactionOptions = {
+      from,
       to,
     };
 
     if (value) {
       options.value = anyToHex(value, { add0x: true });
+    }
+
+    if (nonce) {
+      options.nonce = anyToHex(nonce, { add0x: true });
     }
 
     if (gas) {
@@ -261,11 +270,19 @@ export class Network implements INetwork {
    * estimates transaction
    * @param options
    */
-  public estimateTransaction({ to, value, gas, gasPrice, data }: Partial<INetworkTransactionOptions>): Promise<BN.IBN> {
+  public estimateTransaction({ from, to, nonce, value, gas, gasPrice, data }: Partial<INetworkTransactionOptions>): Promise<BN.IBN> {
     const options: Partial<ISendTransactionOptions> = {};
+
+    if (from) {
+      options.to = anyToHex(to, { add0x: true });
+    }
 
     if (to) {
       options.to = anyToHex(to, { add0x: true });
+    }
+
+    if (nonce) {
+      options.nonce = anyToHex(nonce, { add0x: true });
     }
 
     if (value) {
@@ -304,7 +321,7 @@ export class Network implements INetwork {
    */
   public async signPersonalMessage(message: string | Buffer, address: string): Promise<Buffer> {
     const hash = sha3(message);
-    const signature = this.eth.personal_sign(
+    const signature = await this.eth.personal_sign(
       anyToHex(hash, { add0x: true, defaults: "" }),
       address,
     );
@@ -312,5 +329,22 @@ export class Network implements INetwork {
     return anyToBuffer(signature, {
       defaults: null,
     });
+  }
+
+  private targetToAddress(target: any): string {
+    let result: string = null;
+
+    switch (typeof target) {
+      case "string":
+        result = (target as string) || null;
+        break;
+      case "object":
+        if (target && typeof target.address === "string") {
+          result = target.address || null;
+        }
+        break;
+    }
+
+    return result;
   }
 }

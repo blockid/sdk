@@ -1,4 +1,4 @@
-import { UniqueBehaviorSubject } from "../rx";
+import { UniqueBehaviorSubject, TUniqueBehaviorSubject } from "../rx";
 import { errUnknownAddress } from "./errors";
 import { IAbstractAddressHolder } from "./interfaces";
 
@@ -10,7 +10,15 @@ export abstract class AbstractAddressHolder implements IAbstractAddressHolder {
   /**
    * address subject
    */
-  public address$ = new UniqueBehaviorSubject<string>();
+  public address$: TUniqueBehaviorSubject<string>;
+
+  /**
+   * constructor
+   * @param address
+   */
+  protected constructor(address: string = null) {
+    this.address$ = new UniqueBehaviorSubject<string>(address);
+  }
 
   /**
    * address getter
