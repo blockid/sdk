@@ -1,4 +1,4 @@
-export enum ApiStatus {
+export enum ApiStates {
   Connecting = "CONNECTING",
   Connected = "CONNECTED",
   Verified = "VERIFIED",

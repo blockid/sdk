@@ -1,1 +1,1 @@
-export const errApiInvalidStatus = new Error("Invalid api status");
+export const errApiInvalidState = new Error("Invalid api state");

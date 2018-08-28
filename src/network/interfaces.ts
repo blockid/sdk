@@ -3,7 +3,7 @@
 import { IBN } from "bn.js";
 import { IProvider } from "ethjs";
 import { TUniqueBehaviorSubject } from "../shared";
-import { NetworkStatuses, NetworkVersions } from "./constants";
+import { NetworkStates, NetworkVersions } from "./constants";
 
 export interface INetworkProvider extends IProvider {
   endpoint$: TUniqueBehaviorSubject<string>;
@@ -15,8 +15,8 @@ export interface INetwork {
   version: NetworkVersions;
   name$: TUniqueBehaviorSubject<string>;
   name: string;
-  status$: TUniqueBehaviorSubject<NetworkStatuses>;
-  status: NetworkStatuses;
+  state$: TUniqueBehaviorSubject<NetworkStates>;
+  state: NetworkStates;
   detectVersion(): Promise<NetworkVersions>;
   getPrimaryAccount(): Promise<string>;
   getBalance(target: any): Promise<IBN>;

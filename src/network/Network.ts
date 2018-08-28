@@ -5,7 +5,7 @@ import { ICallOptions, ISendTransactionOptions } from "ethjs";
 import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
 import { anyToBuffer, anyToHex, sha3, UniqueBehaviorSubject } from "../shared";
-import { NetworkVersions, NetworkStatuses, NETWORK_NAMES } from "./constants";
+import { NetworkVersions, NetworkStates, NETWORK_NAMES } from "./constants";
 import {
   INetwork,
   INetworkBlock,
@@ -19,19 +19,19 @@ import {
 export class Network implements INetwork {
 
   /**
-   * version$ subject
+   * version subject
    */
   public version$ = new UniqueBehaviorSubject<NetworkVersions>(NetworkVersions.Unknown);
 
   /**
-   * name$ subject
+   * name subject
    */
   public name$ = new UniqueBehaviorSubject<string>(NETWORK_NAMES[ NetworkVersions.Unknown ]);
 
   /**
-   * status$ subject
+   * state subject
    */
-  public status$ = new UniqueBehaviorSubject<NetworkStatuses>(NetworkStatuses.Unknown);
+  public state$ = new UniqueBehaviorSubject<NetworkStates>(NetworkStates.Unknown);
 
   private eth: Eth.IEth;
 
@@ -72,18 +72,18 @@ export class Network implements INetwork {
   }
 
   /**
-   * status getter
+   * state getter
    */
-  public get status(): NetworkStatuses {
-    return this.status$.value;
+  public get state(): NetworkStates {
+    return this.state$.value;
   }
 
   /**
-   * status setter
-   * @param status
+   * state setter
+   * @param state
    */
-  public set status(status: NetworkStatuses) {
-    this.status$.next(status);
+  public set state(state: NetworkStates) {
+    this.state$.next(state);
   }
 
   /**

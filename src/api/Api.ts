@@ -3,7 +3,7 @@ import "cross-fetch/polyfill";
 import { Subject } from "rxjs";
 import { filter, map, tap } from "rxjs/operators";
 import { IDevice } from "../device";
-import { UniqueBehaviorSubject, jsonReplacer, jsonReviver, AbstractOptionsHolder } from "../shared";
+import { AbstractOptionsHolder, jsonReplacer, jsonReviver, UniqueBehaviorSubject } from "../shared";
 import {
   decodeWsMessage,
   encodeWsMessage,
@@ -12,10 +12,10 @@ import {
   WsMessageTypes,
 } from "../ws";
 import { ApiConnection } from "./ApiConnection";
-import { ApiStatus } from "./constants";
+import { ApiStates } from "./constants";
+import { errApiInvalidState } from "./errors";
 import { IApi, IApiOptions, IApiRequest } from "./interfaces";
 import { ApiResponses } from "./namespaces";
-import { errApiInvalidStatus } from "./errors";
 
 /**
  * Api
@@ -23,9 +23,9 @@ import { errApiInvalidStatus } from "./errors";
 export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
 
   /**
-   * status subject
+   * sate subject
    */
-  public status$ = new UniqueBehaviorSubject<ApiStatus>(ApiStatus.Disconnected);
+  public state$ = new UniqueBehaviorSubject<ApiStates>(ApiStates.Disconnected);
 
   /**
    * ws message subject
@@ -35,6 +35,8 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
   private connection = new ApiConnection();
 
   private sessionHash: Buffer = null;
+
+  private reconnectInterval: any = null;
 
   /**
    * constructor
@@ -46,11 +48,36 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
 
     this
       .options$
-      .pipe(
-        filter((options) => !!options),
-        tap(() => this.connect()),
-      )
-      .subscribe();
+      .subscribe((options) => {
+        if (this.reconnectInterval) {
+          clearInterval(this.reconnectInterval);
+        }
+
+        if (!options) {
+          this.connection.disconnect();
+          return;
+        }
+
+        const { reconnectTimeout } = options;
+        const connect = () => {
+          this.connection.connect(this.getEndpoint("ws"));
+        };
+
+        connect();
+
+        if (reconnectTimeout) {
+          this.reconnectInterval = setInterval(
+            () => {
+              switch (this.state) {
+                case ApiStates.Disconnected:
+                  connect();
+                  break;
+              }
+            },
+            reconnectTimeout,
+          );
+        }
+      });
 
     const { connected$, data$ } = this.connection;
 
@@ -60,20 +87,20 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
           this.sessionHash = null;
         }),
         map((connected) => {
-          let result: ApiStatus = null;
+          let result: ApiStates = null;
           switch (connected) {
             case null:
-              result = ApiStatus.Connecting;
+              result = ApiStates.Connecting;
               break;
             case false:
-              result = ApiStatus.Disconnected;
+              result = ApiStates.Disconnected;
               break;
           }
           return result;
         }),
         filter((value) => !!value),
       )
-      .subscribe(this.status$);
+      .subscribe(this.state$);
 
     data$
       .pipe(
@@ -85,49 +112,38 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
       .wsMessage$
       .pipe(
         map(({ type, payload }) => {
-          let result: ApiStatus = null;
+          let result: ApiStates = null;
           switch (type) {
             case WsMessageTypes.SessionCreated:
               const { hash } = payload as WsMessagePayloads.ISession;
               this.sessionHash = hash;
-              result = ApiStatus.Connected;
+              result = ApiStates.Connected;
               break;
 
             case WsMessageTypes.SessionVerified:
-              result = ApiStatus.Verified;
+              result = ApiStates.Verified;
               break;
           }
           return result;
         }),
         filter((value) => !!value),
       )
-      .subscribe(this.status$);
+      .subscribe(this.state$);
   }
 
   /**
-   * status getter
+   * state getter
    */
-  public get status(): ApiStatus {
-    return this.status$.value;
+  public get state(): ApiStates {
+    return this.state$.value;
   }
 
   /**
-   * status setter
-   * @param status
+   * state setter
+   * @param state
    */
-  public set status(status: ApiStatus) {
-    this.status$.next(status);
-  }
-
-  /**
-   * connects
-   */
-  public connect(): void {
-    this.verifyOptions();
-
-    this
-      .connection
-      .connect(this.getEndpoint("ws"));
+  public set state(state: ApiStates) {
+    this.state$.next(state);
   }
 
   // socket methods
@@ -144,7 +160,7 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
         payload: {
           signature,
         },
-      }, ApiStatus.Connected);
+      }, ApiStates.Connected);
     } catch (err) {
       //
     }
@@ -162,40 +178,44 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
   }
 
   /**
-   * GET /identity/:identity
+   * GET /identity/:identityAddressOrEnsNameHash
+   * @para identityAddressOrEnsNameHash
    */
-  public getIdentity(identity: string): Promise<ApiResponses.IIdentity> {
+  public getIdentity(identityAddressOrEnsNameHash: string): Promise<ApiResponses.IIdentity> {
     return this.call({
-      path: `identity/${identity}`,
+      path: `identity/${identityAddressOrEnsNameHash}`,
     });
   }
 
   /**
-   * GET /member/:identity
+   * GET /member/:identityAddress
+   * @para identityAddress
    */
-  public getMembers(identity: string): Promise<ApiResponses.IMember[]> {
+  public getMembers(identityAddress: string): Promise<ApiResponses.IMember[]> {
     return this.call({
-      path: `member/${identity}`,
+      path: `member/${identityAddress}`,
     });
   }
 
   /**
-   * GET /member/:identity/:member
+   * GET /member/:identityAddress/:memberAddress
+   * @para identityAddress
+   * @para memberAddress
    */
-  public getMember(identity: string, member: string): Promise<ApiResponses.IMember> {
+  public getMember(identityAddress: string, memberAddress: string): Promise<ApiResponses.IMember> {
     return this.call({
-      path: `member/${identity}/${member}`,
+      path: `member/${identityAddress}/${memberAddress}`,
     });
   }
 
   private getEndpoint(protocol: "ws" | "http"): string {
     const { host, port, ssl } = this.options;
-    return `${protocol}${ssl ? "s" : ""}://${host}${port ? `:${port}` : ""}`;
+    return `${protocol}${ssl ? "s" : ""}://${host || "localhost"}${port ? `:${port}` : ""}`;
   }
 
-  private send<T = any>(message: IWsMessage<T>, requiredStatus = ApiStatus.Verified): void {
-    if (this.status !== requiredStatus) {
-      throw errApiInvalidStatus;
+  private send<T = any>(message: IWsMessage<T>, requiredState = ApiStates.Verified): void {
+    if (this.state !== requiredState) {
+      throw errApiInvalidState;
     }
 
     const data = encodeWsMessage(message);

@@ -6,5 +6,7 @@ export * from "./identity";
 export * from "./keyPair";
 export * from "./network";
 export * from "./registry";
+export * from "./sdk";
 export * from "./shared";
+export * from "./storage";
 export * from "./ws";

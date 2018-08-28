@@ -7,7 +7,7 @@ export enum NetworkVersions {
   Local = "1000",
 }
 
-export enum NetworkStatuses {
+export enum NetworkStates {
   Unknown = "UNKNOWN",
   Supported = "SUPPORTED",
   Unsupported = "UNSUPPORTED",
