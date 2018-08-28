@@ -4,12 +4,13 @@ export interface IStorage {
   getDeviceDoc(): Promise<IStorageDeviceDoc>;
   setDeviceDoc(doc: IStorageDeviceDoc): Promise<void>;
   removeDeviceDoc(): Promise<void>;
-  getIdentityDoc(...path: string[]): Promise<IStorageIdentityDoc>;
-  setIdentityDoc(doc: IStorageIdentityDoc, ...path: string[]): Promise<void>;
+  getIdentityDoc(): Promise<IStorageIdentityDoc>;
+  setIdentityDoc(doc: IStorageIdentityDoc): Promise<void>;
   removeIdentityDoc(...path: string[]): Promise<void>;
 }
 
 export interface IStorageOptions {
+  namespace?: string;
   adapter: IStorageAdapter;
 }
 

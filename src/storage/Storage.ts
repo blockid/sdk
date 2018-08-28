@@ -25,7 +25,9 @@ export class Storage implements IStorage {
    * gets device doc
    */
   public getDeviceDoc(): Promise<IStorageDeviceDoc> {
-    return this.getItem(StorageKeys.Device);
+    return this.getItem(
+      this.buildKey(StorageKeys.Device),
+    );
   }
 
   /**
@@ -33,48 +35,59 @@ export class Storage implements IStorage {
    * @param doc
    */
   public setDeviceDoc(doc: IStorageDeviceDoc = null): Promise<void> {
-    return this.setItem(StorageKeys.Device, doc);
+    return this.setItem(
+      this.buildKey(StorageKeys.Device),
+      doc,
+    );
   }
 
   /**
    * removes device doc
    */
   public removeDeviceDoc(): Promise<void> {
-    return this.setItem(StorageKeys.Device, null);
+    return this.setItem(
+      this.buildKey(StorageKeys.Device),
+    );
   }
 
   /**
    * gets identity doc
-   * @param path
    */
-  public getIdentityDoc(...path: string[]): Promise<IStorageIdentityDoc> {
-    return this.getItem([
-      StorageKeys.Identity,
-      ...path,
-    ].join(STORAGE_KEY_SEPARATOR));
+  public getIdentityDoc(): Promise<IStorageIdentityDoc> {
+    return this.getItem(
+      this.buildKey(StorageKeys.Identity),
+    );
   }
 
   /**
    * sets identity doc
    * @param doc
-   * @param path
    */
-  public setIdentityDoc(doc: IStorageIdentityDoc, ...path: string[]): Promise<void> {
-    return this.setItem([
-      StorageKeys.Identity,
-      ...path,
-    ].join(STORAGE_KEY_SEPARATOR), doc);
+  public setIdentityDoc(doc: IStorageIdentityDoc): Promise<void> {
+    return this.setItem(
+      this.buildKey(StorageKeys.Identity),
+      doc,
+    );
   }
 
   /**
    * removes identity doc
-   * @param path
    */
-  public removeIdentityDoc(...path: string[]): Promise<void> {
-    return this.setItem([
-      StorageKeys.Identity,
-      ...path,
-    ].join(STORAGE_KEY_SEPARATOR), null);
+  public removeIdentityDoc(): Promise<void> {
+    return this.setItem(
+      this.buildKey(StorageKeys.Identity),
+    );
+  }
+
+  private buildKey(...parts: string[]): string {
+    if (this.options && this.options.namespace) {
+      parts = [
+        this.options.namespace,
+        ...parts,
+      ];
+    }
+
+    return parts.join(STORAGE_KEY_SEPARATOR);
   }
 
   private async getItem(key: string): Promise<any> {
@@ -94,7 +107,7 @@ export class Storage implements IStorage {
     return result;
   }
 
-  private async setItem(key: string, item: any) {
+  private async setItem(key: string, item: any = null) {
     this.verifyAdapter();
 
     if (item) {
