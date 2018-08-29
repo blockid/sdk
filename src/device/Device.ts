@@ -1,41 +1,79 @@
 import { IBN } from "bn.js";
-import { AbstractAddressHolder } from "../shared";
+import { privateKeyVerify, publicKeyVerify, publicKeyCreate } from "secp256k1";
+import {
+  AbstractAttributesHolder,
+  signPersonalMessage,
+  recoverPublicKeyFromPersonalMessage,
+  publicKeyToAddress,
+  prepareAddress,
+} from "../shared";
 import { INetwork, INetworkTransactionOptions } from "../network";
-import { KeyPair } from "../keyPair";
-import { IDevice, IDeviceOptions } from "./interfaces";
+import { IDevice, IDeviceAttributes } from "./interfaces";
+import { errDeviceUnknownAddress } from "./errors";
 
 /**
  * Device
  */
-export class Device extends AbstractAddressHolder implements IDevice {
+export class Device extends AbstractAttributesHolder<IDeviceAttributes> implements IDevice {
 
-  private keyPair = new KeyPair();
+  /**
+   * creates
+   * @param network
+   * @param attributes
+   */
+  public static create(network: INetwork, attributes: IDeviceAttributes = null): IDevice {
+    return new Device(network, attributes);
+  }
+
+  /**
+   * recovers
+   * @param message
+   * @param signature
+   */
+  public static recover(message: Buffer | string, signature: Buffer | string): IDevice {
+    let result: IDevice = null;
+
+    const publicKey = recoverPublicKeyFromPersonalMessage(message, signature);
+
+    if (publicKey) {
+      result = this.create(null, {
+        publicKey,
+      });
+    }
+
+    return result;
+  }
 
   /**
    * constructor
    * @param network
-   * @param options
+   * @param attributes
    */
-  constructor(private network: INetwork, options: IDeviceOptions = {}) {
-    super();
-    const { privateKey } = options;
-
-    this.keyPair
-      .address$
-      .subscribe(this.address$);
-
-    this.setPrivateKey(privateKey);
+  private constructor(private network: INetwork, attributes: IDeviceAttributes) {
+    super({
+      address: true,
+      publicKey: {
+        getter: true,
+      },
+    }, attributes);
   }
 
   /**
-   * sets private key
-   * @param privateKey
+   * gets balance
    */
-  public setPrivateKey(privateKey: Buffer = null): void {
-    this.address = null;
-    this.keyPair.update({
-      privateKey,
-    });
+  public getBalance(): Promise<IBN> {
+    this.verifyAddress();
+
+    return this.network.getBalance(this);
+  }
+
+  /**
+   * gets transaction count
+   */
+  public getTransactionCount(): Promise<IBN> {
+    this.verifyAddress();
+
+    return this.network.getTransactionCount(this);
   }
 
   /**
@@ -47,30 +85,15 @@ export class Device extends AbstractAddressHolder implements IDevice {
 
     let result: Buffer;
 
-    if (
-      this.keyPair.canSign &&
-      this.address === this.keyPair.address
-    ) {
-      result = this.keyPair.signPersonalMessage(message);
+    const { address, privateKey } = this.attributes;
+
+    if (privateKey) {
+      result = signPersonalMessage(message, privateKey);
     } else {
-      result = await this.network.signPersonalMessage(message, this.address);
+      result = await this.network.signPersonalMessage(message, address);
     }
 
     return result;
-  }
-
-  /**
-   * gets balance
-   */
-  public getBalance(): Promise<IBN> {
-    return this.network.getBalance(this);
-  }
-
-  /**
-   * gets transaction count
-   */
-  public getTransactionCount(): Promise<IBN> {
-    return this.network.getTransactionCount(this);
   }
 
   /**
@@ -84,19 +107,61 @@ export class Device extends AbstractAddressHolder implements IDevice {
 
     const nonce = await this.getTransactionCount();
 
-    if (
-      this.keyPair.canSign &&
-      this.address === this.keyPair.address
-    ) {
+    const { address, privateKey } = this.attributes;
+
+    if (privateKey) {
       // TODO: sign and send raw transaction
     } else {
       result = await this.network.sendTransaction({
         ...options,
         nonce,
-        from: this.address,
+        from: address,
       });
     }
 
     return result;
+  }
+
+  protected prepareAttributes(attributes: IDeviceAttributes): IDeviceAttributes {
+    let result: IDeviceAttributes = null;
+    if (attributes) {
+      let { privateKey, publicKey, address } = attributes;
+
+      if (
+        privateKey &&
+        privateKeyVerify(privateKey)
+      ) {
+        publicKey = publicKeyCreate(privateKey, false);
+      } else {
+        privateKey = null;
+      }
+
+      if (
+        publicKey &&
+        publicKeyVerify(publicKey)
+      ) {
+        address = publicKeyToAddress(publicKey);
+      } else {
+        publicKey = null;
+      }
+
+      if (address) {
+        address = prepareAddress(address);
+      }
+
+      result = {
+        address,
+        publicKey,
+        privateKey,
+      };
+    }
+
+    return result;
+  }
+
+  private verifyAddress(): void {
+    if (!this.getAttribute("address")) {
+      throw errDeviceUnknownAddress;
+    }
   }
 }

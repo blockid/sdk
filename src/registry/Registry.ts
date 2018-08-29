@@ -1,15 +1,26 @@
-import { AbstractOptionsHolder } from "../shared";
+import { AbstractAttributesHolder } from "../shared";
 import { IApi } from "../api";
 import { getEnsNameInfo } from "../ens";
 import { INetwork } from "../network";
 import { IDevice } from "../device";
-import { IRegistry, IRegistryOptions } from "./interfaces";
+import { IRegistry, IRegistryAttributes } from "./interfaces";
 import { IRegistryContact, RegistryContact } from "./contracts";
 
 /**
  * Registry
  */
-export class Registry extends AbstractOptionsHolder<IRegistryOptions> implements IRegistry {
+export class Registry extends AbstractAttributesHolder<IRegistryAttributes> implements IRegistry {
+
+  /**
+   * creates
+   * @param api
+   * @param network
+   * @param device
+   * @param attributes
+   */
+  public static create(api: IApi, network: INetwork, device: IDevice, attributes: IRegistryAttributes = null): IRegistry {
+    return new Registry(api, network, device, attributes);
+  }
 
   private contract: IRegistryContact;
 
@@ -18,18 +29,21 @@ export class Registry extends AbstractOptionsHolder<IRegistryOptions> implements
    * @param api
    * @param network
    * @param device
-   * @param options
+   * @param attributes
    */
-  constructor(api: IApi, network: INetwork, device: IDevice, options: IRegistryOptions = null) {
-    super(options);
+  private constructor(
+    private api: IApi,
+    network: INetwork,
+    device: IDevice,
+    attributes: IRegistryAttributes,
+  ) {
+    super({}, attributes);
 
     this.contract = new RegistryContact(network, device);
 
     this
-      .options$
-      .subscribe(({ address }) => {
-        this.contract.address = address;
-      });
+      .getAttribute$("address")
+      .subscribe(this.contract.address$);
   }
 
   /**
@@ -39,11 +53,5 @@ export class Registry extends AbstractOptionsHolder<IRegistryOptions> implements
   public createSelfIdentity(name: string): Promise<string> {
     const { labelHash, rootNode } = getEnsNameInfo(name);
     return this.contract.createSelfIdentity(labelHash, rootNode.nameHash);
-  }
-
-  protected prepareOptions(options: IRegistryOptions): IRegistryOptions {
-    return options ? options : {
-      address: null,
-    };
   }
 }

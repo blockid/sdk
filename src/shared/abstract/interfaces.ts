@@ -1,11 +1,12 @@
 import { TUniqueBehaviorSubject } from "../rx";
 
-export interface IAbstractAddressHolder {
-  address$: TUniqueBehaviorSubject<string>;
-  address: string;
+export interface IAbstractAttributesHolder<T> {
+  attributes$: TUniqueBehaviorSubject<Partial<T>>;
+  attributes: Partial<T>;
 }
 
-export interface IAbstractOptionsHolder<T> {
-  options$: TUniqueBehaviorSubject<T>;
-  options: T;
+export interface IAttributeOptions {
+  subject: boolean;
+  getter: boolean;
+  setter: boolean;
 }

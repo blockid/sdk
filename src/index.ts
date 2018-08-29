@@ -3,7 +3,6 @@ export * from "./contract";
 export * from "./device";
 export * from "./ens";
 export * from "./identity";
-export * from "./keyPair";
 export * from "./network";
 export * from "./registry";
 export * from "./sdk";

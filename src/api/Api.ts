@@ -3,7 +3,11 @@ import "cross-fetch/polyfill";
 import { Subject } from "rxjs";
 import { filter, map, tap } from "rxjs/operators";
 import { IDevice } from "../device";
-import { AbstractOptionsHolder, jsonReplacer, jsonReviver, UniqueBehaviorSubject } from "../shared";
+import {
+  jsonReplacer,
+  jsonReviver,
+  UniqueBehaviorSubject,
+} from "../shared";
 import {
   decodeWsMessage,
   encodeWsMessage,
@@ -13,14 +17,28 @@ import {
 } from "../ws";
 import { ApiConnection } from "./ApiConnection";
 import { ApiStates } from "./constants";
-import { errApiInvalidState } from "./errors";
+import { errApiInvalidState, errApiUnknownOptions } from "./errors";
 import { IApi, IApiOptions, IApiRequest } from "./interfaces";
 import { ApiResponses } from "./namespaces";
 
 /**
  * Api
  */
-export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
+export class Api implements IApi {
+
+  /**
+   * creates
+   * @param device
+   * @param options
+   */
+  public static create(device: IDevice, options: IApiOptions = null): IApi {
+    return new Api(device, options);
+  }
+
+  /**
+   * options subject
+   */
+  public options$ = new UniqueBehaviorSubject<IApiOptions>();
 
   /**
    * sate subject
@@ -43,8 +61,8 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
    * @param device
    * @param options
    */
-  constructor(private device: IDevice, options: IApiOptions = null) {
-    super(options);
+  private constructor(private device: IDevice, options: IApiOptions) {
+    this.options = options;
 
     this
       .options$
@@ -129,6 +147,21 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
         filter((value) => !!value),
       )
       .subscribe(this.state$);
+  }
+
+  /**
+   * options getter
+   */
+  public get options(): IApiOptions {
+    return this.options$.value;
+  }
+
+  /**
+   * options setter
+   * @param options
+   */
+  public set options(options: IApiOptions) {
+    this.options$.next(options);
   }
 
   /**
@@ -256,5 +289,14 @@ export class Api extends AbstractOptionsHolder<IApiOptions> implements IApi {
     const text = await res.text();
 
     return JSON.parse(text, jsonReviver);
+  }
+
+  /**
+   * verifies options
+   */
+  private verifyOptions(): void {
+    if (!this.options) {
+      throw errApiUnknownOptions;
+    }
   }
 }

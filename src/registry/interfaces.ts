@@ -1,9 +1,9 @@
-import { IAbstractOptionsHolder } from "../shared";
+import { IAbstractAttributesHolder } from "../shared";
 
-export interface IRegistry extends IAbstractOptionsHolder<IRegistryOptions> {
+export interface IRegistry extends IAbstractAttributesHolder<IRegistryAttributes> {
   createSelfIdentity(name: string): Promise<string>;
 }
 
-export interface IRegistryOptions {
+export interface IRegistryAttributes {
   address: string;
 }

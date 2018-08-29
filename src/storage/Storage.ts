@@ -1,12 +1,7 @@
 import { jsonReviver, jsonReplacer } from "../shared";
-import { StorageKeys, STORAGE_KEY_SEPARATOR } from "./constants";
+import { STORAGE_KEY_SEPARATOR } from "./constants";
 import { errStorageUnknownAdapter } from "./errors";
-import {
-  IStorage,
-  IStorageOptions,
-  IStorageDeviceDoc,
-  IStorageIdentityDoc,
-} from "./interfaces";
+import { IStorage, IStorageOptions } from "./interfaces";
 
 /**
  * Storage
@@ -22,78 +17,15 @@ export class Storage implements IStorage {
   }
 
   /**
-   * gets device doc
+   * gets doc
+   * @param key
    */
-  public getDeviceDoc(): Promise<IStorageDeviceDoc> {
-    return this.getItem(
-      this.buildKey(StorageKeys.Device),
-    );
-  }
-
-  /**
-   * sets device doc
-   * @param doc
-   */
-  public setDeviceDoc(doc: IStorageDeviceDoc = null): Promise<void> {
-    return this.setItem(
-      this.buildKey(StorageKeys.Device),
-      doc,
-    );
-  }
-
-  /**
-   * removes device doc
-   */
-  public removeDeviceDoc(): Promise<void> {
-    return this.setItem(
-      this.buildKey(StorageKeys.Device),
-    );
-  }
-
-  /**
-   * gets identity doc
-   */
-  public getIdentityDoc(): Promise<IStorageIdentityDoc> {
-    return this.getItem(
-      this.buildKey(StorageKeys.Identity),
-    );
-  }
-
-  /**
-   * sets identity doc
-   * @param doc
-   */
-  public setIdentityDoc(doc: IStorageIdentityDoc): Promise<void> {
-    return this.setItem(
-      this.buildKey(StorageKeys.Identity),
-      doc,
-    );
-  }
-
-  /**
-   * removes identity doc
-   */
-  public removeIdentityDoc(): Promise<void> {
-    return this.setItem(
-      this.buildKey(StorageKeys.Identity),
-    );
-  }
-
-  private buildKey(...parts: string[]): string {
-    if (this.options && this.options.namespace) {
-      parts = [
-        this.options.namespace,
-        ...parts,
-      ];
-    }
-
-    return parts.join(STORAGE_KEY_SEPARATOR);
-  }
-
-  private async getItem(key: string): Promise<any> {
+  public async getDoc<T = any>(key: string): Promise<T> {
     this.verifyAdapter();
 
     let result: any = null;
+
+    key = this.prepareKey(key);
 
     try {
       const item = await this.options.adapter.getItem(key);
@@ -107,8 +39,15 @@ export class Storage implements IStorage {
     return result;
   }
 
-  private async setItem(key: string, item: any = null) {
+  /**
+   * sets doc
+   * @param key
+   * @param item
+   */
+  public async setDoc<T = any>(key: string, item: T = null): Promise<void> {
     this.verifyAdapter();
+
+    key = this.prepareKey(key);
 
     if (item) {
       const doc = JSON.stringify(item, jsonReplacer);
@@ -118,10 +57,28 @@ export class Storage implements IStorage {
     }
   }
 
+  /**
+   * removes doc
+   * @param key
+   */
+  public removeDoc(key: string): Promise<void> {
+    return this.setDoc(key, null);
+  }
+
+  private prepareKey(...parts: string[]): string {
+    if (this.options.namespace) {
+      parts = [
+        this.options.namespace,
+        ...parts,
+      ];
+    }
+
+    return parts.join(STORAGE_KEY_SEPARATOR);
+  }
+
   private verifyAdapter(): void {
     if (!this.options.adapter) {
       throw errStorageUnknownAdapter;
     }
   }
-
 }

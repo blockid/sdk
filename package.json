@@ -19,6 +19,7 @@
     "clean": "rimraf ./dist/*",
     "precompile": "npm run clean",
     "compile": "tsc",
+    "compile:watch": "tsc --watch",
     "postcompile": "tempack ./dist/",
     "prebuild": "npm run lint && npm run test",
     "build": "npm run compile",

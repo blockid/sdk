@@ -1,17 +1,14 @@
 import { IBN } from "bn.js";
-import { IEnsOptions } from "../ens";
-import { IRegistryOptions } from "../registry";
-import { NetworkVersions } from "../network";
+import { IEnsAttributes } from "../ens";
+import { IRegistryAttributes } from "../registry";
+import { INetworkAttributes } from "../network";
 
 export namespace ApiResponses {
 
   export interface ISettings {
-    ens: IEnsOptions;
-    network: {
-      version: NetworkVersions;
-      providerEndpoint: string;
-    };
-    registry: IRegistryOptions;
+    ens: IEnsAttributes;
+    network: INetworkAttributes;
+    registry: IRegistryAttributes;
   }
 
   export interface IIdentity {

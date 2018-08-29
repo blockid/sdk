@@ -10,10 +10,11 @@ import {
 } from "ethjs-abi";
 import { IDevice } from "../device";
 import { INetwork, INetworkTransactionOptions } from "../network";
-import { sha3, AbstractAddressHolder } from "../shared";
+import { sha3, TUniqueBehaviorSubject, UniqueBehaviorSubject } from "../shared";
 import { IContract } from "./interfaces";
 import { TContractSendResult, TContractEstimateResult } from "./types";
 import {
+  errContractUnknownAddress,
   errContractUnknownNetwork,
   errContractUnknownDevice,
 } from "./errors";
@@ -21,7 +22,12 @@ import {
 /**
  * Contract
  */
-export class Contract extends AbstractAddressHolder implements IContract {
+export class Contract implements IContract {
+
+  /**
+   * address subject
+   */
+  public address$: TUniqueBehaviorSubject<string>;
 
   private readonly logDecoder: TLogDecoder;
   private readonly methods: {
@@ -38,13 +44,13 @@ export class Contract extends AbstractAddressHolder implements IContract {
    * @param device
    * @param address
    */
-  constructor(
+  protected constructor(
     protected abi: TAbi,
     protected network: INetwork = null,
     protected device: IDevice = null,
     address: string = null,
   ) {
-    super(address);
+    this.address$ = new UniqueBehaviorSubject<string>(address);
 
     this.logDecoder = logDecoder(abi);
 
@@ -62,6 +68,21 @@ export class Contract extends AbstractAddressHolder implements IContract {
           break;
       }
     }
+  }
+
+  /**
+   * address getter
+   */
+  public get address(): string {
+    return this.address$.value;
+  }
+
+  /**
+   * address setter
+   * @param address
+   */
+  public set address(address: string) {
+    this.address$.next(address);
   }
 
   /**
@@ -172,6 +193,15 @@ export class Contract extends AbstractAddressHolder implements IContract {
       data,
       ...options,
     });
+  }
+
+  /**
+   * verifies address
+   */
+  protected verifyAddress(): void {
+    if (!this.address) {
+      throw errContractUnknownAddress;
+    }
   }
 
   protected verifyNetwork(): void {

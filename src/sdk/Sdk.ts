@@ -1,13 +1,14 @@
-import { Subject, concat } from "rxjs";
-import { filter } from "rxjs/operators";
-import { generateRandomPrivateKey } from "../shared";
-import { Api, ApiStates, IApi } from "../api";
-import { Device, IDevice } from "../device";
-import { Ens, IEns } from "../ens";
-import { Identity, IIdentity } from "../identity";
-import { INetwork, Network, NetworkProvider } from "../network";
+import { concat, Subject, from } from "rxjs";
+import { filter, switchMap } from "rxjs/operators";
+import { Api, ApiResponses, ApiStates, IApi } from "../api";
+import { Device, IDevice, IDeviceAttributes } from "../device";
+import { Ens, IEns, IEnsAttributes } from "../ens";
+import { Identity, IIdentity, IIdentityAttributes } from "../identity";
+import { INetwork, INetworkAttributes, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
+import { generateRandomPrivateKey } from "../shared";
 import { IStorage, Storage } from "../storage";
+import { SdkStorageKeys } from "./constants";
 import { ISdk, ISdkOptions } from "./interfaces";
 
 /**
@@ -50,8 +51,6 @@ export class Sdk implements ISdk {
    */
   public registry: IRegistry;
 
-  private networkProvider = new NetworkProvider();
-
   private storage: IStorage;
 
   /**
@@ -59,12 +58,12 @@ export class Sdk implements ISdk {
    * @param options
    */
   constructor(options: ISdkOptions) {
-    this.network = new Network(this.networkProvider);
-    this.ens = new Ens(this.network);
-    this.device = new Device(this.network);
-    this.api = new Api(this.device, options.api);
-    this.identity = new Identity(this.api, this.device);
-    this.registry = new Registry(this.api, this.network, this.device);
+    this.network = Network.create();
+    this.ens = Ens.create(this.network);
+    this.device = Device.create(this.network);
+    this.api = Api.create(this.device, options.api);
+    this.identity = Identity.create(this.api, this.device);
+    this.registry = Registry.create(this.api, this.network, this.device);
     this.storage = new Storage(options.storage);
 
     concat<any>(
@@ -79,26 +78,86 @@ export class Sdk implements ISdk {
       )
       .subscribe(() => this.wrapVoidAsync(this.api.verifySession()));
 
-    this.setupDevice();
+    this
+      .api
+      .state$
+      .pipe(
+        filter((state) => state === ApiStates.Verified),
+        switchMap(() => from(this.wrapTAsync(this.api.getSettings()))),
+        filter((settings) => !!settings),
+      )
+      .subscribe((settings) => {
+        if (settings) {
+          this.ens.attributes = settings.ens;
+          this.registry.attributes = settings.registry;
+          this.network.attributes = settings.network;
+        }
+      });
+
+    this.wrapVoidAsync(this.setup());
   }
 
-  private setupDevice(): void {
-    this.wrapVoidAsync((async () => {
-      let doc = await this.storage.getDeviceDoc();
+  private async setup(): Promise<void> {
+    // device
+    {
+      let attributes = await this.storage.getDoc<IDeviceAttributes>(SdkStorageKeys.Device);
 
-      if (!doc) {
-        doc = {
+      if (!attributes) {
+        attributes = {
           privateKey: generateRandomPrivateKey(),
         };
 
-        await this.storage.setDeviceDoc(doc);
+        await this.storage.setDoc(SdkStorageKeys.Device, attributes);
       }
 
-      const { privateKey } = doc;
+      this.device.attributes = attributes;
+    }
 
-      this.device.setPrivateKey(privateKey);
+    // ens
+    {
+      const attributes = await this.storage.getDoc<IEnsAttributes>(SdkStorageKeys.Ens);
+      if (attributes) {
+        this.ens.attributes = attributes;
+      }
 
-    })());
+      this
+        .ens
+        .attributes$
+        .subscribe((attributes) => this.wrapVoidAsync(
+          this.storage.setDoc(SdkStorageKeys.Ens, attributes),
+        ));
+    }
+
+    // identity
+    {
+      const attributes = await this.storage.getDoc<IIdentityAttributes>(SdkStorageKeys.Identity);
+      if (attributes) {
+        this.identity.attributes = attributes;
+      }
+
+      this
+        .identity
+        .attributes$
+        .subscribe((attributes) => this.wrapVoidAsync(
+          this.storage.setDoc(SdkStorageKeys.Identity, attributes),
+        ));
+    }
+
+    // network
+    {
+      const attributes = await this.storage.getDoc<INetworkAttributes>(SdkStorageKeys.Network);
+      if (attributes) {
+        this.network.attributes = attributes;
+      }
+
+      this
+        .network
+        .attributes$
+        .subscribe((attributes) => this.wrapVoidAsync(
+          this.storage.setDoc(SdkStorageKeys.Network, attributes),
+        ));
+
+    }
   }
 
   private wrapTAsync<T = any>(promise: Promise<T>): Promise<T> {

@@ -1,6 +1,6 @@
 import { INetwork } from "../network";
-import { AbstractOptionsHolder } from "../shared";
-import { IEns, IEnsOptions, IEnsRecord, IEnsNode } from "./interfaces";
+import { AbstractAttributesHolder } from "../shared";
+import { IEns, IEnsAttributes, IEnsRecord, IEnsNode } from "./interfaces";
 import {
   getEnsNameHash,
   getEnsNameInfo,
@@ -10,28 +10,36 @@ import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } 
 /**
  * Ens
  */
-export class Ens extends AbstractOptionsHolder<IEnsOptions> implements IEns {
+export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEns {
+
+  /**
+   * creates
+   * @param network
+   * @param attributes
+   */
+  public static create(network: INetwork, attributes: IEnsAttributes = null): IEns {
+    return new Ens(network, attributes);
+  }
 
   private readonly contract: IEnsContract;
+
   private readonly resolverContract: IEnsResolverContract;
 
   /**
    * constructor
    * @param network
-   * @param options
+   * @param attributes
    */
-  constructor(private network: INetwork, options: IEnsOptions = null) {
-    super(options);
+  private constructor(private network: INetwork, attributes: IEnsAttributes) {
+    super({
+      supportedRootNodes: true,
+    }, attributes);
 
     this.contract = new EnsContract(network);
     this.resolverContract = new EnsResolverContract(network);
 
-    this
-      .options$
-      .subscribe(({ address, resolverAddress }) => {
-        this.contract.address = address;
-        this.resolverContract.address = resolverAddress;
-      });
+    this.getAttribute$("address").subscribe(this.contract.address$);
+    this.getAttribute$("resolverAddress").subscribe(this.resolverContract.address$);
   }
 
   /**
@@ -39,7 +47,8 @@ export class Ens extends AbstractOptionsHolder<IEnsOptions> implements IEns {
    * @param rootNode
    */
   public isRootNodeSupported(rootNode: Partial<IEnsNode>): boolean {
-    return rootNode && this.options.supportedRootNodes.some(({ name, nameHash }) => (
+    const { supportedRootNodes } = this.attributes;
+    return rootNode && supportedRootNodes.some(({ name, nameHash }) => (
       name === rootNode.name ||
       nameHash === rootNode.nameHash
     ));
@@ -50,8 +59,6 @@ export class Ens extends AbstractOptionsHolder<IEnsOptions> implements IEns {
    * @param name
    */
   public async lookup(name: string): Promise<IEnsRecord> {
-    this.verifyOptions();
-
     let result: IEnsRecord = null;
 
     const info = getEnsNameInfo(name);
@@ -85,8 +92,8 @@ export class Ens extends AbstractOptionsHolder<IEnsOptions> implements IEns {
     return result;
   }
 
-  protected prepareOptions(options: IEnsOptions): IEnsOptions {
-    return options ? options : {
+  protected prepareAttributes(attributes: IEnsAttributes): IEnsAttributes {
+    return attributes ? attributes : {
       address: null,
       resolverAddress: null,
       supportedRootNodes: [],

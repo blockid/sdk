@@ -18,22 +18,23 @@ export function isEqual(a: any, b: any, depth = 0): boolean {
       ) {
         if (
           BN.isBN(a) &&
-          BN.isBN(b) &&
-          (a as BN.IBN).eq(b)
+          BN.isBN(b)
         ) {
-          result = true;
+          result = (a as BN.IBN).eq(b);
         } else if (
           Buffer.isBuffer(a) &&
-          Buffer.isBuffer(b) &&
-          (a as Buffer).equals(b)
+          Buffer.isBuffer(b)
         ) {
-          result = true;
+          result = (a as Buffer).equals(b);
         } else if (
           Array.isArray(a) &&
-          Array.isArray(b) &&
-          (a as any[]).every((value, index) => isEqual(value, b[ index ], depth + 1))
+          Array.isArray(b)
         ) {
-          result = true;
+          const aLength = a.length;
+          const bLength = b.length;
+          if (aLength === bLength) {
+            result = (a as any[]).every((value, index) => isEqual(value, b[ index ], depth + 1));
+          }
         } else {
           const aKeys = Object.keys(a);
           const bKeys = Object.keys(b);

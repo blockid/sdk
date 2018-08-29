@@ -2,7 +2,7 @@
 
 import { IBN } from "bn.js";
 import { IProvider } from "ethjs";
-import { TUniqueBehaviorSubject } from "../shared";
+import { TUniqueBehaviorSubject, IAbstractAttributesHolder } from "../shared";
 import { NetworkStates, NetworkVersions } from "./constants";
 
 export interface INetworkProvider extends IProvider {
@@ -10,9 +10,9 @@ export interface INetworkProvider extends IProvider {
   endpoint: string;
 }
 
-export interface INetwork {
-  version$: TUniqueBehaviorSubject<NetworkVersions>;
-  version: NetworkVersions;
+export interface INetwork extends IAbstractAttributesHolder<INetworkAttributes> {
+  version$?: TUniqueBehaviorSubject<NetworkVersions>;
+  version?: NetworkVersions;
   name$: TUniqueBehaviorSubject<string>;
   name: string;
   state$: TUniqueBehaviorSubject<NetworkStates>;
@@ -30,6 +30,11 @@ export interface INetwork {
   estimateTransaction(options: Partial<INetworkTransactionOptions>): Promise<IBN>;
   sendRawTransaction(data: string | Buffer): Promise<string>;
   signPersonalMessage(message: string | Buffer, address: string): Promise<Buffer>;
+}
+
+export interface INetworkAttributes {
+  version?: NetworkVersions;
+  providerEndpoint?: string;
 }
 
 export interface INetworkMessageOptions {

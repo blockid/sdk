@@ -1,7 +1,9 @@
 import { ILog } from "ethjs-abi";
-import { IAbstractAddressHolder } from "../shared";
+import { TUniqueBehaviorSubject } from "../shared";
 
-export interface IContract extends IAbstractAddressHolder {
+export interface IContract {
+  address$: TUniqueBehaviorSubject<string>;
+  address: string;
   at(address: string): IContract;
   decodeLogs(logs: any[]): ILog[];
 }

@@ -4,29 +4,50 @@ import * as BN from "bn.js";
 import { ICallOptions, ISendTransactionOptions } from "ethjs";
 import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
-import { anyToBuffer, anyToHex, sha3, UniqueBehaviorSubject } from "../shared";
+import {
+  anyToBuffer,
+  anyToHex,
+  sha3,
+  UniqueBehaviorSubject,
+  AbstractAttributesHolder,
+  targetToAddress,
+} from "../shared";
 import { NetworkVersions, NetworkStates, NETWORK_NAMES } from "./constants";
 import {
   INetwork,
+  INetworkAttributes,
   INetworkBlock,
-  INetworkMessageOptions, INetworkTransactionOptions,
+  INetworkMessageOptions,
+  INetworkTransactionOptions,
   INetworkTransactionReceipt,
 } from "./interfaces";
+import { NetworkProvider } from "./NetworkProvider";
 
 /**
  * Network
  */
-export class Network implements INetwork {
+export class Network extends AbstractAttributesHolder<INetworkAttributes> implements INetwork {
 
   /**
-   * version subject
+   * creates
+   * @param attributes
    */
-  public version$ = new UniqueBehaviorSubject<NetworkVersions>(NetworkVersions.Unknown);
+  public static create(attributes: INetworkAttributes = null): INetwork {
+    return new Network(attributes, null);
+  }
+
+  /**
+   * creates with custom provider
+   * @param customProvider
+   */
+  public static createWithCustomProvider(customProvider: Eth.IProvider): INetwork {
+    return new Network(null, customProvider);
+  }
 
   /**
    * name subject
    */
-  public name$ = new UniqueBehaviorSubject<string>(NETWORK_NAMES[ NetworkVersions.Unknown ]);
+  public name$ = new UniqueBehaviorSubject<string>();
 
   /**
    * state subject
@@ -35,33 +56,29 @@ export class Network implements INetwork {
 
   private eth: Eth.IEth;
 
+  private provider = new NetworkProvider();
+
   /**
    * Network
-   * @param provider
+   * @param attributes
+   * @param customProvider
    */
-  constructor(provider: Eth.IProvider) {
-    this.eth = new Eth(provider);
+  public constructor(attributes: INetworkAttributes, customProvider: Eth.IProvider = null) {
+    super({
+      version: true,
+    }, attributes);
 
-    this.version$
+    this.eth = new Eth(customProvider || this.provider);
+
+    this.getAttribute$("version")
       .pipe(
         map((version) => NETWORK_NAMES[ version ] || null),
       )
       .subscribe(this.name$);
-  }
 
-  /**
-   * version getter
-   */
-  public get version(): NetworkVersions {
-    return this.version$.value;
-  }
-
-  /**
-   * version setter
-   * @param version
-   */
-  public set version(version: NetworkVersions) {
-    this.version$.next(version);
+    if (!customProvider) {
+      this.getAttribute$("providerEndpoint").subscribe(this.provider.endpoint$);
+    }
   }
 
   /**
@@ -120,7 +137,7 @@ export class Network implements INetwork {
    */
   public async getBalance(target: any): Promise<BN.IBN> {
     let result: BN.IBN = new BN(0);
-    const address: string = this.targetToAddress(target);
+    const address: string = targetToAddress(target);
 
     if (address) {
       result = await this.eth.getBalance(address, "latest");
@@ -135,7 +152,7 @@ export class Network implements INetwork {
    */
   public async getTransactionCount(target: any): Promise<BN.IBN> {
     let result: BN.IBN = new BN(0);
-    const address: string = this.targetToAddress(target);
+    const address: string = targetToAddress(target);
 
     if (address) {
       result = await this.eth.getTransactionCount(address, "pending");
@@ -331,20 +348,9 @@ export class Network implements INetwork {
     });
   }
 
-  private targetToAddress(target: any): string {
-    let result: string = null;
-
-    switch (typeof target) {
-      case "string":
-        result = (target as string) || null;
-        break;
-      case "object":
-        if (target && typeof target.address === "string") {
-          result = target.address || null;
-        }
-        break;
-    }
-
-    return result;
+  protected prepareAttributes(attributes: INetworkAttributes): INetworkAttributes {
+    return attributes ? attributes : {
+      version: NetworkVersions.Unknown,
+    };
   }
 }

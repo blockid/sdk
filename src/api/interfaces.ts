@@ -1,10 +1,12 @@
 import { Subject } from "rxjs";
-import { TUniqueBehaviorSubject, IAbstractOptionsHolder } from "../shared";
+import { TUniqueBehaviorSubject } from "../shared";
 import { IWsMessage } from "../ws";
 import { ApiStates } from "./constants";
 import { ApiResponses } from "./namespaces";
 
-export interface IApi extends IAbstractOptionsHolder<IApiOptions> {
+export interface IApi {
+  options$: TUniqueBehaviorSubject<IApiOptions>;
+  options: IApiOptions;
   state$: TUniqueBehaviorSubject<ApiStates>;
   state: ApiStates;
   wsMessage$: Subject<IWsMessage>;
