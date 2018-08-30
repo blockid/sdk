@@ -11,16 +11,16 @@ export class UniqueBehaviorSubject<T> extends BehaviorSubject<T> {
    * @param value
    * @param prepareValue
    */
-  constructor(value: T = null, prepareValue: (value: T) => T = null) {
+  constructor(value: T = null, prepareValue: (value: T, oldValue: T) => T = null) {
     super(
-      prepareValue ? prepareValue(value) : value,
+      prepareValue ? prepareValue(value, null) : value,
     );
 
     const next = this.next.bind(this);
 
     this.next = (value: T) => {
       if (prepareValue) {
-        value = prepareValue(value);
+        value = prepareValue(value, this.getValue());
       }
 
       if (isEqual(this.getValue(), value)) {

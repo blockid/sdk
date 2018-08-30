@@ -1,6 +1,5 @@
 export enum SdkStorageKeys {
   Device = "device",
-  Ens = "ens",
+  Settings = "settings",
   Identity = "identity",
-  Network = "network",
 }

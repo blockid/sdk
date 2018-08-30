@@ -1,15 +1,17 @@
-import { concat, Subject, from } from "rxjs";
+import { concat, from } from "rxjs";
 import { filter, switchMap } from "rxjs/operators";
-import { Api, ApiResponses, ApiStates, IApi } from "../api";
+import { Api, ApiStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
-import { Ens, IEns, IEnsAttributes } from "../ens";
+import { Ens, IEns } from "../ens";
 import { Identity, IIdentity, IIdentityAttributes } from "../identity";
-import { INetwork, INetworkAttributes, Network } from "../network";
+import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
-import { generateRandomPrivateKey } from "../shared";
+import { generateRandomPrivateKey, TUniqueBehaviorSubject, UniqueBehaviorSubject } from "../shared";
 import { IStorage, Storage } from "../storage";
 import { SdkStorageKeys } from "./constants";
 import { ISdk, ISdkOptions } from "./interfaces";
+import { TSdkSettings } from "./types";
+import { SdkError } from "./SdkError";
 
 /**
  * Sdk
@@ -19,7 +21,12 @@ export class Sdk implements ISdk {
   /**
    * error subject
    */
-  public error$ = new Subject<any>();
+  public settings$: TUniqueBehaviorSubject<TSdkSettings>;
+
+  /**
+   * error subject
+   */
+  public error$ = new SdkError();
 
   /**
    * api
@@ -58,6 +65,16 @@ export class Sdk implements ISdk {
    * @param options
    */
   constructor(options: ISdkOptions) {
+    this.settings$ = new UniqueBehaviorSubject<TSdkSettings>(
+      null,
+      (settings, settingsOld) => {
+        return settings
+          ? {
+            ...(settingsOld || {}),
+            ...settings,
+          } : null;
+      });
+
     this.network = Network.create();
     this.ens = Ens.create(this.network);
     this.device = Device.create(this.network);
@@ -76,25 +93,25 @@ export class Sdk implements ISdk {
           this.api.state === ApiStates.Connected
         )),
       )
-      .subscribe(() => this.wrapVoidAsync(this.api.verifySession()));
+      .subscribe(() => this
+        .error$
+        .wrapAsync(this.api.verifySession()),
+      );
 
     this
       .api
       .state$
       .pipe(
         filter((state) => state === ApiStates.Verified),
-        switchMap(() => from(this.wrapTAsync(this.api.getSettings()))),
+        switchMap(() => from(this
+          .error$
+          .wrapTAsync(this.api.getSettings())),
+        ),
         filter((settings) => !!settings),
       )
-      .subscribe((settings) => {
-        if (settings) {
-          this.ens.attributes = settings.ens;
-          this.registry.attributes = settings.registry;
-          this.network.attributes = settings.network;
-        }
-      });
+      .subscribe(this.settings$);
 
-    this.wrapVoidAsync(this.setup());
+    this.error$.wrapAsync(this.setup());
   }
 
   private async setup(): Promise<void> {
@@ -113,19 +130,26 @@ export class Sdk implements ISdk {
       this.device.attributes = attributes;
     }
 
-    // ens
+    // settings
     {
-      const attributes = await this.storage.getDoc<IEnsAttributes>(SdkStorageKeys.Ens);
-      if (attributes) {
-        this.ens.attributes = attributes;
-      }
+      this
+        .settings$
+        .next(await this.storage.getDoc<TSdkSettings>(SdkStorageKeys.Settings));
 
       this
-        .ens
-        .attributes$
-        .subscribe((attributes) => this.wrapVoidAsync(
-          this.storage.setDoc(SdkStorageKeys.Ens, attributes),
-        ));
+        .settings$
+        .pipe(
+          filter((settings) => !!settings),
+        )
+        .subscribe((settings) => {
+          this.ens.attributes = settings.ens;
+          this.network.attributes = settings.network;
+          this.registry.attributes = settings.registry;
+
+          this.error$.wrapAsync(
+            this.storage.setDoc(SdkStorageKeys.Settings, settings),
+          );
+        });
     }
 
     // identity
@@ -138,37 +162,9 @@ export class Sdk implements ISdk {
       this
         .identity
         .attributes$
-        .subscribe((attributes) => this.wrapVoidAsync(
+        .subscribe((attributes) => this.error$.wrapAsync(
           this.storage.setDoc(SdkStorageKeys.Identity, attributes),
         ));
     }
-
-    // network
-    {
-      const attributes = await this.storage.getDoc<INetworkAttributes>(SdkStorageKeys.Network);
-      if (attributes) {
-        this.network.attributes = attributes;
-      }
-
-      this
-        .network
-        .attributes$
-        .subscribe((attributes) => this.wrapVoidAsync(
-          this.storage.setDoc(SdkStorageKeys.Network, attributes),
-        ));
-
-    }
-  }
-
-  private wrapTAsync<T = any>(promise: Promise<T>): Promise<T> {
-    return promise
-      .catch((err) => {
-        this.error$.next(err);
-        return null;
-      });
-  }
-
-  private wrapVoidAsync<T = any>(promise: Promise<T>): void {
-    this.wrapTAsync(promise).catch(() => null);
   }
 }
