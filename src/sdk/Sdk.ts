@@ -3,6 +3,7 @@ import { filter, switchMap } from "rxjs/operators";
 import { Api, ApiStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
+import { Linker, ILinker } from "../linker";
 import { Identity, IIdentity, IIdentityAttributes } from "../identity";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
@@ -44,6 +45,11 @@ export class Sdk implements ISdk {
   public ens: IEns;
 
   /**
+   * linker
+   */
+  public linker: ILinker;
+
+  /**
    * identity
    */
   public identity: IIdentity;
@@ -79,6 +85,7 @@ export class Sdk implements ISdk {
     this.ens = new Ens(this.network);
     this.device = new Device(this.network);
     this.api = new Api(this.device, options.api);
+    this.linker = new Linker(options.linker);
     this.identity = new Identity(this.api, this.device);
     this.registry = new Registry(this.api, this.network, this.device);
     this.storage = new Storage(options.storage);

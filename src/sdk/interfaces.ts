@@ -3,6 +3,7 @@ import { IApi, IApiOptions } from "../api";
 import { IDevice } from "../device";
 import { IEns } from "../ens";
 import { IIdentity } from "../identity";
+import { ILinker, ILinkerOptions } from "../linker";
 import { INetwork } from "../network";
 import { IRegistry } from "../registry";
 import { IStorageOptions } from "../storage";
@@ -15,6 +16,7 @@ export interface ISdk {
   api: IApi;
   device: IDevice;
   ens: IEns;
+  linker: ILinker;
   identity: IIdentity;
   network: INetwork;
   registry: IRegistry;
@@ -22,6 +24,7 @@ export interface ISdk {
 
 export interface ISdkOptions {
   api: IApiOptions;
+  linker: ILinkerOptions;
   storage: IStorageOptions;
 }
 
