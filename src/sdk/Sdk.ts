@@ -75,12 +75,12 @@ export class Sdk implements ISdk {
           } : null;
       });
 
-    this.network = Network.create();
-    this.ens = Ens.create(this.network);
-    this.device = Device.create(this.network);
-    this.api = Api.create(this.device, options.api);
-    this.identity = Identity.create(this.api, this.device);
-    this.registry = Registry.create(this.api, this.network, this.device);
+    this.network = new Network();
+    this.ens = new Ens(this.network);
+    this.device = new Device(this.network);
+    this.api = new Api(this.device, options.api);
+    this.identity = new Identity(this.api, this.device);
+    this.registry = new Registry(this.api, this.network, this.device);
     this.storage = new Storage(options.storage);
 
     concat<any>(
@@ -130,6 +130,21 @@ export class Sdk implements ISdk {
       this.device.attributes = attributes;
     }
 
+    // identity
+    {
+      const attributes = await this.storage.getDoc<IIdentityAttributes>(SdkStorageKeys.Identity);
+      if (attributes) {
+        this.identity.attributes = attributes;
+      }
+
+      this
+        .identity
+        .attributes$
+        .subscribe((attributes) => this.error$.wrapAsync(
+          this.storage.setDoc(SdkStorageKeys.Identity, attributes),
+        ));
+    }
+
     // settings
     {
       this
@@ -150,21 +165,6 @@ export class Sdk implements ISdk {
             this.storage.setDoc(SdkStorageKeys.Settings, settings),
           );
         });
-    }
-
-    // identity
-    {
-      const attributes = await this.storage.getDoc<IIdentityAttributes>(SdkStorageKeys.Identity);
-      if (attributes) {
-        this.identity.attributes = attributes;
-      }
-
-      this
-        .identity
-        .attributes$
-        .subscribe((attributes) => this.error$.wrapAsync(
-          this.storage.setDoc(SdkStorageKeys.Identity, attributes),
-        ));
     }
   }
 }

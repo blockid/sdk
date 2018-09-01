@@ -11,20 +11,11 @@ import { IIdentity, IIdentityAttributes } from "./interfaces";
 export class Identity extends AbstractAttributesHolder<IIdentityAttributes> implements IIdentity {
 
   /**
-   * creates
-   * @param api
-   * @param device
-   */
-  public static create(api: IApi, device: IDevice): IIdentity {
-    return new Identity(api, device);
-  }
-
-  /**
    * constructor
    * @param api
    * @param device
    */
-  private constructor(private api: IApi, private device: IDevice) {
+  constructor(private api: IApi, private device: IDevice) {
     super({
       address: true,
       state: true,

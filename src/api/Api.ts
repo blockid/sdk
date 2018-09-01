@@ -18,22 +18,13 @@ import {
 import { ApiConnection } from "./ApiConnection";
 import { ApiStates } from "./constants";
 import { errApiInvalidState, errApiUnknownOptions } from "./errors";
-import { IApi, IApiOptions, IApiRequest } from "./interfaces";
+import { IApi, IApiOptions, IApiConnection, IApiRequest } from "./interfaces";
 import { ApiResponses } from "./namespaces";
 
 /**
  * Api
  */
 export class Api implements IApi {
-
-  /**
-   * creates
-   * @param device
-   * @param options
-   */
-  public static create(device: IDevice, options: IApiOptions = null): IApi {
-    return new Api(device, options);
-  }
 
   /**
    * options subject
@@ -50,8 +41,6 @@ export class Api implements IApi {
    */
   public wsMessage$ = new Subject<IWsMessage>();
 
-  private connection = new ApiConnection();
-
   private sessionHash: Buffer = null;
 
   private reconnectInterval: any = null;
@@ -60,8 +49,9 @@ export class Api implements IApi {
    * constructor
    * @param device
    * @param options
+   * @param connection
    */
-  private constructor(private device: IDevice, options: IApiOptions) {
+  constructor(private device: IDevice, options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
     this.options = options;
 
     this

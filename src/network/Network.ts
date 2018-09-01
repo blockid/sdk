@@ -29,22 +29,6 @@ import { NetworkProvider } from "./NetworkProvider";
 export class Network extends AbstractAttributesHolder<INetworkAttributes> implements INetwork {
 
   /**
-   * creates
-   * @param attributes
-   */
-  public static create(attributes: INetworkAttributes = null): INetwork {
-    return new Network(attributes, null);
-  }
-
-  /**
-   * creates with custom provider
-   * @param customProvider
-   */
-  public static createWithCustomProvider(customProvider: Eth.IProvider): INetwork {
-    return new Network(null, customProvider);
-  }
-
-  /**
    * name subject
    */
   public name$ = new UniqueBehaviorSubject<string>();
@@ -63,7 +47,7 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
    * @param attributes
    * @param customProvider
    */
-  public constructor(attributes: INetworkAttributes, customProvider: Eth.IProvider = null) {
+  constructor(attributes: INetworkAttributes = null, customProvider: Eth.IProvider = null) {
     super({
       version: true,
     }, attributes);

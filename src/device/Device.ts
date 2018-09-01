@@ -15,16 +15,6 @@ import { errDeviceUnknownAddress } from "./errors";
  * Device
  */
 export class Device extends AbstractAttributesHolder<IDeviceAttributes> implements IDevice {
-
-  /**
-   * creates
-   * @param network
-   * @param attributes
-   */
-  public static create(network: INetwork, attributes: IDeviceAttributes = null): IDevice {
-    return new Device(network, attributes);
-  }
-
   /**
    * recovers
    * @param message
@@ -36,7 +26,7 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
     const publicKey = recoverPublicKeyFromPersonalMessage(message, signature);
 
     if (publicKey) {
-      result = this.create(null, {
+      result = new Device(null, {
         publicKey,
       });
     }
@@ -49,7 +39,7 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
    * @param network
    * @param attributes
    */
-  private constructor(private network: INetwork, attributes: IDeviceAttributes) {
+  constructor(private network: INetwork, attributes: IDeviceAttributes = null) {
     super({
       address: true,
       publicKey: {

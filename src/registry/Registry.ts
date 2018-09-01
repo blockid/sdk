@@ -11,17 +11,6 @@ import { IRegistryContact, RegistryContact } from "./contracts";
  */
 export class Registry extends AbstractAttributesHolder<IRegistryAttributes> implements IRegistry {
 
-  /**
-   * creates
-   * @param api
-   * @param network
-   * @param device
-   * @param attributes
-   */
-  public static create(api: IApi, network: INetwork, device: IDevice, attributes: IRegistryAttributes = null): IRegistry {
-    return new Registry(api, network, device, attributes);
-  }
-
   private contract: IRegistryContact;
 
   /**
@@ -31,11 +20,11 @@ export class Registry extends AbstractAttributesHolder<IRegistryAttributes> impl
    * @param device
    * @param attributes
    */
-  private constructor(
+  constructor(
     private api: IApi,
     network: INetwork,
     device: IDevice,
-    attributes: IRegistryAttributes,
+    attributes: IRegistryAttributes = null,
   ) {
     super({}, attributes);
 

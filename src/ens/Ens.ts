@@ -12,15 +12,6 @@ import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } 
  */
 export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEns {
 
-  /**
-   * creates
-   * @param network
-   * @param attributes
-   */
-  public static create(network: INetwork, attributes: IEnsAttributes = null): IEns {
-    return new Ens(network, attributes);
-  }
-
   private readonly contract: IEnsContract;
 
   private readonly resolverContract: IEnsResolverContract;
@@ -30,7 +21,7 @@ export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEn
    * @param network
    * @param attributes
    */
-  private constructor(private network: INetwork, attributes: IEnsAttributes) {
+  constructor(private network: INetwork, attributes: IEnsAttributes = null) {
     super({
       supportedRootNodes: true,
     }, attributes);
