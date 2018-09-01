@@ -5,7 +5,7 @@ import { Network, NetworkProvider } from "../network";
 describe.skip("ens", () => {
   describe("ENS", () => {
 
-    const network = new Network(new NetworkProvider("http://localhost:8545"));
+    const network = new Network(null, new NetworkProvider("http://localhost:8545"));
     const ADDRESS = "0x137722198c37dd500e0a304160cb57a2c8af347f";
     const RESOLVER_ADDRESS = "0xd373171f3f9b3da8552287174583dd57843c7002";
 
