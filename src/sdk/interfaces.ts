@@ -24,7 +24,7 @@ export interface ISdk {
 
 export interface ISdkOptions {
   api: IApiOptions;
-  linker: ILinkerOptions;
+  linker?: ILinkerOptions;
   storage: IStorageOptions;
 }
 

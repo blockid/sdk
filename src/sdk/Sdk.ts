@@ -85,7 +85,7 @@ export class Sdk implements ISdk {
     this.ens = new Ens(this.network);
     this.device = new Device(this.network);
     this.api = new Api(this.device, options.api);
-    this.linker = new Linker(options.linker);
+    this.linker = new Linker(options.linker || null);
     this.identity = new Identity(this.api, this.device);
     this.registry = new Registry(this.api, this.network, this.device);
     this.storage = new Storage(options.storage);
