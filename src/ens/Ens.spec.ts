@@ -3,7 +3,7 @@ import { getEnsNameHash } from "./utils";
 import { Network, NetworkProvider } from "../network";
 
 describe.skip("ens", () => {
-  describe("ENS", () => {
+  describe("Ens", () => {
 
     const network = new Network(null, new NetworkProvider("http://localhost:8545"));
     const ADDRESS = "0x137722198c37dd500e0a304160cb57a2c8af347f";
