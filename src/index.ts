@@ -2,6 +2,7 @@ export * from "./api";
 export * from "./contract";
 export * from "./device";
 export * from "./ens";
+export * from "./linker";
 export * from "./identity";
 export * from "./network";
 export * from "./registry";
