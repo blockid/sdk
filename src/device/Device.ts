@@ -3,7 +3,6 @@ import { privateKeyVerify, publicKeyVerify, publicKeyCreate } from "secp256k1";
 import {
   AbstractAttributesHolder,
   signPersonalMessage,
-  recoverPublicKeyFromPersonalMessage,
   publicKeyToAddress,
   prepareAddress,
 } from "../shared";
@@ -15,24 +14,6 @@ import { errDeviceUnknownAddress } from "./errors";
  * Device
  */
 export class Device extends AbstractAttributesHolder<IDeviceAttributes> implements IDevice {
-  /**
-   * recovers
-   * @param message
-   * @param signature
-   */
-  public static recover(message: Buffer | string, signature: Buffer | string): IDevice {
-    let result: IDevice = null;
-
-    const publicKey = recoverPublicKeyFromPersonalMessage(message, signature);
-
-    if (publicKey) {
-      result = new Device(null, {
-        publicKey,
-      });
-    }
-
-    return result;
-  }
 
   /**
    * constructor
@@ -46,6 +27,13 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
         getter: true,
       },
     }, attributes);
+  }
+
+  /**
+   * has private key getter
+   */
+  public get hasPrivateKey(): boolean {
+    return !!this.getAttribute("privateKey");
   }
 
   /**

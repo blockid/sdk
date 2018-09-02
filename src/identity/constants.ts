@@ -1,5 +1,7 @@
 export enum IdentityStates {
   Creating = "CREATING",
+  Stored = "STORED",
+  Pending = "PENDING",
   Verified = "VERIFIED",
-  Invalid = "INVALID",
+  Disconnected = "DISCONNECTED",
 }

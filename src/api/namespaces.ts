@@ -19,7 +19,7 @@ export namespace ApiResponses {
     updatedAt: number;
   }
 
-  export interface IMember {
+  export interface IIdentityMember {
     address: string;
     purpose: string;
     limit: IBN;

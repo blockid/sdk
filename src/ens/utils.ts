@@ -1,79 +1,78 @@
+import "unorm";
 import { toAscii } from "idna-uts46-hx";
 import { sha3, anyToHex } from "../shared";
+import { IEnsInfo } from "./interfaces";
 
 const SEPARATOR = ".";
 
-function normalize(name: string): string {
-  try {
-    name = toAscii(name.toLowerCase(), {
-      transitional: true,
-      useStd3ASCII: true,
-    });
-  } catch (err) {
-    name = null;
-  }
-
-  if (name) {
-    name
-      .split(SEPARATOR)
-      .filter((value) => !!value)
-      .join(SEPARATOR);
-  }
-
-  return name || null;
-}
-
 /**
- * prepares ens mame
+ * normalizes ens name
  * @param parts
  */
-export function prepareEnsName(...parts: string[]): string {
-  return normalize(parts.join(SEPARATOR));
+export function normalizeEnsName(...parts: string[]): string {
+  let result: string = null;
+
+  let name = parts
+    .filter((part) => !!part)
+    .join(SEPARATOR)
+    .split(SEPARATOR)
+    .map((part) => part.toLowerCase().trim())
+    .filter((part) => !!part)
+    .join(SEPARATOR);
+
+  if (name) {
+    try {
+      name = toAscii(name.toLowerCase(), {
+        transitional: true,
+        useStd3ASCII: true,
+      });
+    } catch (err) {
+      name = null;
+    }
+
+    if (name) {
+      result = name;
+    }
+  }
+
+  return result;
 }
 
 /**
  * get ens mame info
  * @param parts
  */
-export function getEnsNameInfo(...parts: string[]): {
-  name: string;
-  nameHash: string;
-  label: string;
-  labelHash: string;
-  rootNode: {
-    name: string;
-    nameHash: string;
-  }
-} {
-  const name = prepareEnsName(...parts);
-  if (!name) {
-    return null;
-  }
+export function getEnsNameInfo(...parts: string[]): IEnsInfo {
+  let result: IEnsInfo = null;
 
-  let rootNode: {
-    name: string;
-    nameHash: string;
-  } = null;
+  const name = normalizeEnsName(...parts);
 
-  let labelHash: string = null;
+  if (name) {
 
-  const { label, rootNodeName } = splitEnsName(name);
-
-  if (label && rootNodeName) {
-    labelHash = getEnsLabelHash(label);
-    rootNode = {
-      name: rootNodeName,
-      nameHash: getEnsNameHash(rootNodeName),
+    result = {
+      name,
+      nameHash: getEnsNameHash(name),
+      label: null,
+      labelHash: null,
+      rootNode: null,
     };
+
+    const { label, rootNode } = splitEnsName(name);
+
+    if (label && rootNode) {
+      result = {
+        ...result,
+        label,
+        labelHash: getEnsLabelHash(label),
+        rootNode: {
+          ...rootNode,
+          nameHash: getEnsNameHash(rootNode.name),
+        },
+      };
+    }
   }
 
-  return {
-    name,
-    nameHash: getEnsNameHash(name),
-    label,
-    labelHash,
-    rootNode,
-  };
+  return result;
 }
 
 /**
@@ -82,22 +81,28 @@ export function getEnsNameInfo(...parts: string[]): {
  */
 export function splitEnsName(name: string): {
   label: string;
-  rootNodeName: string;
+  rootNode: {
+    name: string;
+  };
 } {
   let label: string = null;
-  let rootNodeName: string = null;
+  let rootNode: {
+    name: string;
+  } = null;
 
   if (name) {
     const parts = name.split(SEPARATOR);
     if (parts.length > 1) {
       label = parts[ 0 ];
-      rootNodeName = parts.slice(1).join(SEPARATOR);
+      rootNode = {
+        name: parts.slice(1).join(SEPARATOR),
+      };
     }
   }
 
   return {
     label,
-    rootNodeName,
+    rootNode,
   };
 }
 

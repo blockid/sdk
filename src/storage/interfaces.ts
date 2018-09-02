@@ -1,7 +1,10 @@
+import { IErrorSubject } from "../shared";
+
 export interface IStorage {
+  error$: IErrorSubject;
   getDoc<T = any>(key: string): Promise<T>;
-  setDoc<T = any>(key: string, doc?: T): Promise<void>;
-  removeDoc(key: string): Promise<void>;
+  setDoc<T = any>(key: string, doc?: T): void;
+  removeDoc(key: string): void;
 }
 
 export interface IStorageOptions {

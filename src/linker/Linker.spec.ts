@@ -24,9 +24,12 @@ describe("linker", () => {
 
         const url = linker.buildActionUrl<string, Buffer>(action);
 
-        linker.url = url;
+        linker.incomingUrl$.next(url);
 
-        expect(isEqual(action, { ...linker.action, to: null })).toBeTruthy();
+        expect(isEqual(action, {
+          ...linker.incomingAction$.value,
+          to: null,
+        })).toBeTruthy();
       });
     });
   });

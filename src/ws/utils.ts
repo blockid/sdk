@@ -23,6 +23,10 @@ export function getWsMessagePayloadType(messageType: WsMessageTypes): Type {
     case WsMessageTypes.VerifySession:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.SignedSession ];
       break;
+    case WsMessageTypes.VerifyPersonalMessage:
+    case WsMessageTypes.SignedPersonalMessage:
+      result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.SignedPersonalMessage ];
+      break;
     case WsMessageTypes.IdentityCreated:
     case WsMessageTypes.IdentityUpdated:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.Identity ];

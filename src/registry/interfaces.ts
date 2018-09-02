@@ -1,7 +1,7 @@
 import { IAbstractAttributesHolder } from "../shared";
 
 export interface IRegistry extends IAbstractAttributesHolder<IRegistryAttributes> {
-  createSelfIdentity(name: string): Promise<string>;
+  createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string>;
 }
 
 export interface IRegistryAttributes {

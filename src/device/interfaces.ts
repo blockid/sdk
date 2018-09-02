@@ -12,6 +12,7 @@ export interface IDevice extends IAbstractAttributesHolder<IDeviceAttributes> {
   address$?: TUniqueBehaviorSubject<string>;
   address?: string;
   publicKey?: Buffer;
+  hasPrivateKey: boolean;
   getBalance(): Promise<IBN>;
   getTransactionCount(): Promise<IBN>;
   signPersonalMessage(message: Buffer | string): Promise<Buffer>;

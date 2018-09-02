@@ -18,10 +18,15 @@ export interface IEnsNode {
   nameHash: string;
 }
 
-export interface IEnsRecord extends IEnsNode {
-  supported?: boolean;
-  address?: string;
+export interface IEnsInfo extends IEnsNode {
+  name: string;
+  nameHash: string;
   label: string;
   labelHash: string;
   rootNode: IEnsNode;
+}
+
+export interface IEnsRecord extends IEnsInfo {
+  supported: boolean;
+  address: string;
 }

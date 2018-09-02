@@ -162,7 +162,7 @@ export class Contract implements IContract {
    * @param value
    * @param args
    */
-  protected send(methodName: string, ...args: string[]): TContractSendResult {
+  protected send(methodName: string, ...args: any[]): TContractSendResult {
     this.verifyNetwork();
     this.verifyDevice();
     this.verifyAddress();
@@ -182,7 +182,7 @@ export class Contract implements IContract {
    * @param value
    * @param args
    */
-  protected estimate(methodName: string, ...args: string[]): TContractEstimateResult {
+  protected estimate(methodName: string, ...args: any[]): TContractEstimateResult {
     this.verifyNetwork();
     this.verifyAddress();
 

@@ -1,8 +1,7 @@
 import "cross-fetch/polyfill";
 
 import { Subject } from "rxjs";
-import { filter, map, tap } from "rxjs/operators";
-import { IDevice } from "../device";
+import { filter, map } from "rxjs/operators";
 import {
   jsonReplacer,
   jsonReviver,
@@ -41,17 +40,14 @@ export class Api implements IApi {
    */
   public wsMessage$ = new Subject<IWsMessage>();
 
-  private sessionHash: Buffer = null;
-
   private reconnectInterval: any = null;
 
   /**
    * constructor
-   * @param device
    * @param options
    * @param connection
    */
-  constructor(private device: IDevice, options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
+  constructor(options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
     this.options = options;
 
     this
@@ -91,9 +87,6 @@ export class Api implements IApi {
 
     connected$
       .pipe(
-        tap(() => {
-          this.sessionHash = null;
-        }),
         map((connected) => {
           let result: ApiStates = null;
           switch (connected) {
@@ -115,28 +108,6 @@ export class Api implements IApi {
         map(decodeWsMessage),
       )
       .subscribe(this.wsMessage$);
-
-    this
-      .wsMessage$
-      .pipe(
-        map(({ type, payload }) => {
-          let result: ApiStates = null;
-          switch (type) {
-            case WsMessageTypes.SessionCreated:
-              const { hash } = payload as WsMessagePayloads.ISession;
-              this.sessionHash = hash;
-              result = ApiStates.Connected;
-              break;
-
-            case WsMessageTypes.SessionVerified:
-              result = ApiStates.Verified;
-              break;
-          }
-          return result;
-        }),
-        filter((value) => !!value),
-      )
-      .subscribe(this.state$);
   }
 
   /**
@@ -173,20 +144,50 @@ export class Api implements IApi {
 
   /**
    * verifies session
+   * @param signature;
    */
-  public async verifySession(): Promise<void> {
-    try {
-      const signature = await this.device.signPersonalMessage(this.sessionHash);
+  public verifySession(signature: Buffer): void {
+    this.send<WsMessagePayloads.ISignedSession>({
+      type: WsMessageTypes.VerifySession,
+      payload: {
+        signature,
+      },
+    }, ApiStates.Connected);
+  }
 
-      this.send<WsMessagePayloads.ISignedSession>({
-        type: WsMessageTypes.VerifySession,
-        payload: {
-          signature,
-        },
-      }, ApiStates.Connected);
-    } catch (err) {
-      //
-    }
+  /**
+   * mutes session
+   */
+  public muteSession(): void {
+    this.send({
+      type: WsMessageTypes.MuteSession,
+      payload: null,
+    }, ApiStates.Verified);
+  }
+
+  /**
+   * un mutes session
+   */
+  public unMuteSession(): void {
+    this.send({
+      type: WsMessageTypes.UnMuteSession,
+      payload: null,
+    }, ApiStates.Verified);
+  }
+
+  /**
+   * verifies personal message
+   * @param recipient
+   * @param signature
+   */
+  public verifyPersonalMessage(recipient: string, signature: Buffer): void {
+    this.send<WsMessagePayloads.ISignedPersonalMessage>({
+      type: WsMessageTypes.VerifyPersonalMessage,
+      payload: {
+        recipient,
+        signature,
+      },
+    }, ApiStates.Verified);
   }
 
   // http methods
@@ -195,40 +196,45 @@ export class Api implements IApi {
    * GET /settings
    */
   public getSettings(): Promise<ApiResponses.ISettings> {
-    return this.call({
-      path: "settings",
-    });
+    return this
+      .call({
+        path: "settings",
+      })
+      .catch(() => null);
   }
 
   /**
-   * GET /identity/:identityAddressOrEnsNameHash
-   * @para identityAddressOrEnsNameHash
+   * GET /identity/:identity
+   * @para identity
    */
-  public getIdentity(identityAddressOrEnsNameHash: string): Promise<ApiResponses.IIdentity> {
-    return this.call({
-      path: `identity/${identityAddressOrEnsNameHash}`,
-    });
+  public getIdentity(identity: string): Promise<ApiResponses.IIdentity> {
+    return this
+      .call({
+        path: `identity/${identity}`,
+      });
   }
 
   /**
-   * GET /member/:identityAddress
-   * @para identityAddress
+   * GET /identity/:identity/member
+   * @para identity
    */
-  public getMembers(identityAddress: string): Promise<ApiResponses.IMember[]> {
-    return this.call({
-      path: `member/${identityAddress}`,
-    });
+  public getIdentityMembers(identity: string): Promise<ApiResponses.IIdentityMember[]> {
+    return this
+      .call({
+        path: `identity/${identity}/member`,
+      });
   }
 
   /**
-   * GET /member/:identityAddress/:memberAddress
+   * GET /identity/:identity/member/:member
    * @para identityAddress
    * @para memberAddress
    */
-  public getMember(identityAddress: string, memberAddress: string): Promise<ApiResponses.IMember> {
-    return this.call({
-      path: `member/${identityAddress}/${memberAddress}`,
-    });
+  public getIdentityMember(identity: string, member: string): Promise<ApiResponses.IIdentityMember> {
+    return this
+      .call({
+        path: `identity/${identity}/member/${member}`,
+      });
   }
 
   private getEndpoint(protocol: "ws" | "http"): string {
@@ -262,6 +268,8 @@ export class Api implements IApi {
 
     const { headers, body } = options;
 
+    let result: T = null;
+
     const res = await fetch(`${endpoint}/${path}`, {
       method,
       headers: new Headers({
@@ -278,12 +286,23 @@ export class Api implements IApi {
 
     const text = await res.text();
 
-    return JSON.parse(text, jsonReviver);
+    switch (res.status) {
+      case 404:
+        result = null;
+        break;
+
+      case 200:
+      case 400:
+        result = JSON.parse(text, jsonReviver);
+        break;
+
+      default:
+        throw new Error(text);
+    }
+
+    return result;
   }
 
-  /**
-   * verifies options
-   */
   private verifyOptions(): void {
     if (!this.options) {
       throw errApiUnknownOptions;

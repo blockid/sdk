@@ -1,4 +1,6 @@
-import { jsonReviver, jsonReplacer } from "../shared";
+import { Subject, from } from "rxjs";
+import { mergeMap } from "rxjs/operators";
+import { jsonReviver, jsonReplacer, ErrorSubject } from "../shared";
 import { STORAGE_KEY_SEPARATOR } from "./constants";
 import { errStorageUnknownAdapter } from "./errors";
 import { IStorage, IStorageOptions } from "./interfaces";
@@ -9,11 +11,34 @@ import { IStorage, IStorageOptions } from "./interfaces";
 export class Storage implements IStorage {
 
   /**
+   * error subject
+   */
+  public error$ = new ErrorSubject();
+
+  private cacheWriteKey$ = new Subject<string>();
+  private cacheData = new Map<string, string>();
+
+  /**
    * constructor
    * @param options
    */
   constructor(private options: IStorageOptions) {
-    //
+    this
+      .cacheWriteKey$
+      .pipe(
+        mergeMap((key) => from(this
+          .error$
+          .wrapTAsync(async () => {
+            const item = this.cacheData.get(key) || null;
+            if (item) {
+              await options.adapter.setItem(key, item);
+            } else {
+              await options.adapter.removeItem(key);
+            }
+          })),
+        ),
+      )
+      .subscribe();
   }
 
   /**
@@ -27,14 +52,21 @@ export class Storage implements IStorage {
 
     key = this.prepareKey(key);
 
+    let item: string = null;
+
     try {
-      const item = await this.options.adapter.getItem(key);
+      item = (await this.options.adapter.getItem(key)) || null;
       if (item) {
         result = JSON.parse(item, jsonReviver) || null;
       }
     } catch (err) {
+      this.error$.next(err);
+
       result = null;
+      item = null;
     }
+
+    this.cacheData.set(key, item);
 
     return result;
   }
@@ -42,18 +74,22 @@ export class Storage implements IStorage {
   /**
    * sets doc
    * @param key
-   * @param item
+   * @param doc
    */
-  public async setDoc<T = any>(key: string, item: T = null): Promise<void> {
+  public setDoc<T = any>(key: string, doc: T = null): void {
     this.verifyAdapter();
 
     key = this.prepareKey(key);
 
-    if (item) {
-      const doc = JSON.stringify(item, jsonReplacer);
-      await this.options.adapter.setItem(key, doc);
-    } else {
-      await this.options.adapter.removeItem(key);
+    let item: string = null;
+
+    if (doc) {
+      item = JSON.stringify(doc, jsonReplacer);
+    }
+
+    if (item !== (this.cacheData.get(key) || null)) {
+      this.cacheData.set(key, item);
+      this.cacheWriteKey$.next(key);
     }
   }
 
@@ -61,7 +97,7 @@ export class Storage implements IStorage {
    * removes doc
    * @param key
    */
-  public removeDoc(key: string): Promise<void> {
+  public removeDoc(key: string): void {
     return this.setDoc(key, null);
   }
 

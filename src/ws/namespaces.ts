@@ -9,6 +9,12 @@ export namespace WsMessagePayloads {
     signature: Buffer;
   }
 
+  export interface ISignedPersonalMessage {
+    recipient?: string;
+    signer?: string;
+    signature: Buffer;
+  }
+
   export interface IIdentity {
     address: string;
     nonce?: IBN;

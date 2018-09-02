@@ -52,11 +52,24 @@ export class Linker implements ILinker {
   }
 
   /**
-   * url subject
+   * incoming url subject
    */
-  public url$ = new UniqueBehaviorSubject<string>();
+  public incomingUrl$ = new UniqueBehaviorSubject<string>();
 
-  public action$ = new UniqueBehaviorSubject<ILinkerAction>();
+  /**
+   * outgoing url subject
+   */
+  public outgoingUrl$ = new UniqueBehaviorSubject<string>();
+
+  /**
+   * incoming action subject
+   */
+  public incomingAction$ = new UniqueBehaviorSubject<ILinkerAction>();
+
+  /**
+   * accepted action subject
+   */
+  public acceptedAction$ = new UniqueBehaviorSubject<ILinkerAction>();
 
   private readonly options: ILinkerOptions;
 
@@ -76,42 +89,28 @@ export class Linker implements ILinker {
     };
 
     this
-      .url$
+      .incomingUrl$
       .pipe(
         filter((url) => !!url),
         map(Linker.parseUrl),
       )
-      .subscribe(this.action$);
+      .subscribe(this.incomingAction$);
   }
 
   /**
-   * action setter
+   * accepts action
    * @param action
    */
-  public set action(action: ILinkerAction) {
-    this.action$.next(action);
+  public acceptAction(action: ILinkerAction): void {
+    this.incomingAction$.next(null);
+    this.acceptedAction$.next(action);
   }
 
   /**
-   * action getter
+   * rejects action
    */
-  public get action(): ILinkerAction {
-    return this.action$.value;
-  }
-
-  /**
-   * url getter
-   */
-  public get url(): string {
-    return this.url$.value;
-  }
-
-  /**
-   * url setter
-   * @param url
-   */
-  public set url(url: string) {
-    this.url$.next(url);
+  public rejectAction(): void {
+    this.incomingAction$.next(null);
   }
 
   /**

@@ -10,11 +10,14 @@ export interface IApi {
   state$: TUniqueBehaviorSubject<ApiStates>;
   state: ApiStates;
   wsMessage$: Subject<IWsMessage>;
-  verifySession(): Promise<void>;
+  verifySession(signature: Buffer): void;
+  muteSession(): void;
+  unMuteSession(): void;
+  verifyPersonalMessage(recipient: string, signature: Buffer): void;
   getSettings(): Promise<ApiResponses.ISettings>;
-  getIdentity(identityAddressOrEnsNameHash: string): Promise<ApiResponses.IIdentity>;
-  getMembers(identityAddress: string): Promise<ApiResponses.IMember[]>;
-  getMember(identityAddress: string, memberAddress: string): Promise<ApiResponses.IMember>;
+  getIdentity(identity: string): Promise<ApiResponses.IIdentity>;
+  getIdentityMembers(identity: string): Promise<ApiResponses.IIdentityMember[]>;
+  getIdentityMember(identity: string, member: string): Promise<ApiResponses.IIdentityMember>;
 }
 
 export interface IApiOptions {

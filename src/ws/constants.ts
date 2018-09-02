@@ -6,21 +6,28 @@ export enum WsMessageTypes {
   SessionCreated = 0x01,
   VerifySession = 0x02,
   SessionVerified = 0x03,
+  MuteSession = 0x04,
+  UnMuteSession = 0x05,
+
+  // personal messages
+  VerifyPersonalMessage = 0x13,
+  SignedPersonalMessage = 0x14,
 
   // identity
-  IdentityCreated = 0x11,
-  IdentityUpdated = 0x12,
+  IdentityCreated = 0x21,
+  IdentityUpdated = 0x22,
 
   // member
-  MemberAdded = 0x21,
-  MemberLimitUpdated = 0x22,
-  MemberManagerUpdated = 0x23,
-  MemberRemoved = 0x24,
+  MemberAdded = 0x31,
+  MemberLimitUpdated = 0x32,
+  MemberManagerUpdated = 0x33,
+  MemberRemoved = 0x34,
 }
 
 export enum WsMessagePayloadTypeNames {
   Session = "Session",
   SignedSession = "SignedSession",
+  SignedPersonalMessage = "SignedPersonalMessage",
   Identity = "Identity",
   Member = "Member",
 }
@@ -41,6 +48,24 @@ const wsMessagePayloadNamespace = Namespace
             signature: {
               type: "bytes",
               id: 1,
+            },
+          },
+        },
+        [ WsMessagePayloadTypeNames.SignedPersonalMessage ]: {
+          fields: {
+            recipient: {
+              type: "bytes",
+              id: 1,
+              rule: "optional",
+            },
+            signer: {
+              type: "bytes",
+              id: 2,
+              rule: "optional",
+            },
+            signature: {
+              type: "bytes",
+              id: 3,
             },
           },
         },
@@ -129,6 +154,8 @@ export const wsMessagePayloadBytesMapper: { [ key: string ]: any } = {
   signature: Buffer,
   address: String,
   ensNameHash: String,
+  recipient: String,
+  signer: String,
   identity: String,
   purpose: String,
   manager: String,
@@ -140,6 +167,7 @@ export const wsMessagePayloadBytesMapper: { [ key: string ]: any } = {
 export const wsMessagePayloadTypes: { [ key: string ]: Type } = {
   Session: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.Session),
   SignedSession: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.SignedSession),
+  SignedPersonalMessage: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.SignedPersonalMessage),
   Identity: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.Identity),
   Member: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.Member),
 };

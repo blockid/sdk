@@ -1,18 +1,19 @@
-import { Subject } from "rxjs";
 import { IApi, IApiOptions } from "../api";
 import { IDevice } from "../device";
 import { IEns } from "../ens";
 import { IIdentity } from "../identity";
-import { ILinker, ILinkerOptions } from "../linker";
+import { ILinker, ILinkerApp, ILinkerOptions, LinkerActionsTypes } from "../linker";
 import { INetwork } from "../network";
 import { IRegistry } from "../registry";
 import { IStorageOptions } from "../storage";
-import { TUniqueBehaviorSubject } from "../shared";
+import { TUniqueBehaviorSubject, IErrorSubject } from "../shared";
 import { TSdkSettings } from "./types";
 
 export interface ISdk {
   settings$: TUniqueBehaviorSubject<TSdkSettings>;
-  error$: Subject<any>;
+  error$: IErrorSubject;
+  authAction$: TUniqueBehaviorSubject<ISdkAuthAction>;
+  authAction: ISdkAuthAction;
   api: IApi;
   device: IDevice;
   ens: IEns;
@@ -20,6 +21,13 @@ export interface ISdk {
   identity: IIdentity;
   network: INetwork;
   registry: IRegistry;
+  signAndVerifyApiSession(): void;
+  muteSession(): void;
+  unMuteSession(): void;
+  createSelfIdentity(name: string): Promise<boolean>;
+  signInToIdentity(name: string, toApp?: ILinkerApp): Promise<string>;
+  activateAuthAction(authAction: Partial<ISdkAuthAction>): string;
+  deactivateAuthAction(): void;
 }
 
 export interface ISdkOptions {
@@ -28,7 +36,8 @@ export interface ISdkOptions {
   storage: IStorageOptions;
 }
 
-export interface ISdkError extends Subject<any> {
-  wrapAsync(promise: Promise<any>): void;
-  wrapTAsync<T = any>(promise: Promise<T>): Promise<T>;
+export interface ISdkAuthAction<T = any> {
+  type: LinkerActionsTypes;
+  hash: Buffer;
+  payload: T;
 }

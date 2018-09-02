@@ -1,33 +1,60 @@
+import { randomBytes } from "crypto";
 import { concat, from } from "rxjs";
-import { filter, switchMap } from "rxjs/operators";
+import { filter, map, switchMap, tap } from "rxjs/operators";
 import { Api, ApiStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
-import { Linker, ILinker } from "../linker";
-import { Identity, IIdentity, IIdentityAttributes } from "../identity";
+import { Identity, IdentityStates, IIdentity, IIdentityAttributes } from "../identity";
+import {
+  ILinker,
+  ILinkerApp,
+  Linker,
+  LinkerActionPayloads,
+  LinkerActionsTypes,
+  LinkerTargetTypes,
+} from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
-import { generateRandomPrivateKey, TUniqueBehaviorSubject, UniqueBehaviorSubject } from "../shared";
+import {
+  ErrorSubject,
+  generateRandomPrivateKey,
+  recoverAddressFromPersonalMessage,
+  TUniqueBehaviorSubject,
+  UniqueBehaviorSubject,
+} from "../shared";
 import { IStorage, Storage } from "../storage";
+import { WsMessagePayloads, WsMessageTypes } from "../ws";
 import { SdkStorageKeys } from "./constants";
-import { ISdk, ISdkOptions } from "./interfaces";
+import { ISdk, ISdkAuthAction, ISdkOptions } from "./interfaces";
 import { TSdkSettings } from "./types";
-import { SdkError } from "./SdkError";
 
 /**
  * Sdk
  */
 export class Sdk implements ISdk {
 
+  private static prepareSettings(value: TSdkSettings, oldValue: TSdkSettings): TSdkSettings {
+    return value
+      ? {
+        ...(oldValue || {}),
+        ...value,
+      } : null;
+  }
+
   /**
-   * error subject
+   * settings subject
    */
   public settings$: TUniqueBehaviorSubject<TSdkSettings>;
 
   /**
+   * auth action subject
+   */
+  public authAction$ = new UniqueBehaviorSubject<ISdkAuthAction>();
+
+  /**
    * error subject
    */
-  public error$ = new SdkError();
+  public error$ = new ErrorSubject();
 
   /**
    * api
@@ -64,64 +91,240 @@ export class Sdk implements ISdk {
    */
   public registry: IRegistry;
 
-  private storage: IStorage;
+  private storage: IStorage = null;
+
+  private sessionHash: Buffer = null;
 
   /**
    * constructor
    * @param options
    */
-  constructor(options: ISdkOptions) {
-    this.settings$ = new UniqueBehaviorSubject<TSdkSettings>(
-      null,
-      (settings, settingsOld) => {
-        return settings
-          ? {
-            ...(settingsOld || {}),
-            ...settings,
-          } : null;
-      });
+  constructor(private options: ISdkOptions) {
+    this.settings$ = new UniqueBehaviorSubject<TSdkSettings>(null, Sdk.prepareSettings);
 
-    this.network = new Network();
-    this.ens = new Ens(this.network);
-    this.device = new Device(this.network);
-    this.api = new Api(this.device, options.api);
-    this.linker = new Linker(options.linker || null);
-    this.identity = new Identity(this.api, this.device);
-    this.registry = new Registry(this.api, this.network, this.device);
-    this.storage = new Storage(options.storage);
-
-    concat<any>(
-      this.api.state$,
-      this.device.address$,
-    )
-      .pipe(
-        filter(() => (
-          this.device.address &&
-          this.api.state === ApiStates.Connected
-        )),
-      )
-      .subscribe(() => this
-        .error$
-        .wrapAsync(this.api.verifySession()),
-      );
-
-    this
-      .api
-      .state$
-      .pipe(
-        filter((state) => state === ApiStates.Verified),
-        switchMap(() => from(this
-          .error$
-          .wrapTAsync(this.api.getSettings())),
-        ),
-        filter((settings) => !!settings),
-      )
-      .subscribe(this.settings$);
-
-    this.error$.wrapAsync(this.setup());
+    this.error$.wrapAsync(this.initialize());
+    this.error$.wrapAsync(this.setupStorage());
+    this.error$.wrapAsync(this.setupApi());
+    this.error$.wrapAsync(this.setupEns());
+    this.error$.wrapAsync(this.setupRegistry());
+    this.error$.wrapAsync(this.setupNetwork());
+    this.error$.wrapAsync(this.setupLinker());
   }
 
-  private async setup(): Promise<void> {
+  /**
+   * auth action getter
+   */
+  public get authAction(): ISdkAuthAction {
+    return this.authAction$.value;
+  }
+
+  /**
+   * signs and verifies api session
+   */
+  public signAndVerifyApiSession(): void {
+    this
+      .error$
+      .wrapAsync(async () => {
+        const signature = await this.device.signPersonalMessage(this.sessionHash);
+        this.api.verifySession(signature);
+      });
+  }
+
+  /**
+   * mutes session
+   */
+  public muteSession(): void {
+    this
+      .error$
+      .wrapAsync(() => this.api.muteSession());
+  }
+
+  /**
+   * un mutes session
+   */
+  public unMuteSession(): void {
+    this
+      .error$
+      .wrapAsync(() => this.api.unMuteSession());
+  }
+
+  /**
+   * creates self identity
+   * @param name
+   */
+  public createSelfIdentity(name: string): Promise<boolean> {
+    return this
+      .error$
+      .wrapTAsync<boolean>(async () => {
+        let result: boolean = false;
+
+        const ensRecord = await this.ens.lookup(name);
+        if (
+          ensRecord &&
+          !ensRecord.address &&
+          ensRecord.supported
+        ) {
+          const {
+            nameHash,
+            labelHash,
+            rootNode: {
+              nameHash: rootNodeNameHash,
+            },
+          } = ensRecord;
+
+          const hash = await this.registry.createSelfIdentity(labelHash, rootNodeNameHash);
+
+          if (hash) {
+
+            this.identity.setStateAsCreating({
+              ensNode: {
+                name,
+                nameHash,
+              },
+            });
+
+            result = true;
+          }
+        }
+
+        return result;
+      });
+  }
+
+  /**
+   * signs in to identity
+   * @param name
+   * @param toApp
+   */
+  public signInToIdentity(name: string, toApp: ILinkerApp = null): Promise<string> {
+    return this
+      .error$
+      .wrapTAsync<string>(async () => {
+        let result: string = null;
+
+        const ensRecord = await this.ens.lookup(name);
+        if (
+          ensRecord &&
+          ensRecord.address &&
+          ensRecord.supported
+        ) {
+
+          this.identity.setStateAsPending({
+            address: ensRecord.address,
+            ensNode: {
+              name: ensRecord.name,
+              nameHash: ensRecord.nameHash,
+            },
+          });
+
+          if (await this.api.getIdentityMember(ensRecord.address, this.device.address)) {
+            const identity = await this.api.getIdentity(ensRecord.address);
+
+            this.identity.update({
+              ...identity,
+              state: IdentityStates.Verified,
+            });
+
+          } else if (toApp) {
+            result = this.linker.buildActionUrl<any, LinkerActionPayloads.IAddMember>({
+              type: LinkerActionsTypes.AddIdentityMember,
+              from: null,
+              to: {
+                type: LinkerTargetTypes.App,
+                data: toApp,
+              },
+              payload: {
+                address: this.device.address,
+              },
+            });
+          }
+        }
+
+        return result;
+      });
+  }
+
+  /**
+   * activates auth action
+   * @param type
+   * @param payload
+   */
+  public activateAuthAction({ type, payload }: Partial<ISdkAuthAction>): string {
+    const hash = randomBytes(16);
+
+    this.unMuteSession();
+
+    this.authAction$.next({
+      type,
+      payload,
+      hash,
+    });
+
+    return this.linker.buildActionUrl<string, Buffer>({
+      type: LinkerActionsTypes.SignPersonalMessage,
+      from: {
+        type: LinkerTargetTypes.Device,
+        data: this.device.address,
+      },
+      to: null,
+      payload,
+    });
+  }
+
+  /**
+   * deactivates auth action
+   */
+  public deactivateAuthAction(): void {
+    this.muteSession();
+
+    this.authAction$.next(null);
+  }
+
+  protected async initialize(): Promise<void> {
+    if (this.options) {
+      this.network = new Network();
+      this.api = new Api(this.options.api);
+      this.device = new Device(this.network);
+      this.ens = new Ens(this.network);
+      this.linker = new Linker(this.options.linker || null);
+      this.identity = new Identity(this.api, this.network, this.device);
+      this.registry = new Registry(this.network, this.device);
+      this.storage = new Storage(this.options.storage);
+
+      concat<any>(
+        this.api.state$,
+        this.device.address$,
+      )
+        .pipe(
+          filter(() => (
+            this.device.address &&
+            this.api.state === ApiStates.Connected
+          )),
+        )
+        .subscribe(() => this.signAndVerifyApiSession());
+
+      this
+        .api
+        .state$
+        .pipe(
+          filter((state) => state === ApiStates.Verified),
+          switchMap(() => from(this.error$.wrapTAsync(this.api.getSettings()))),
+          filter((settings) => !!settings),
+        )
+        .subscribe(this.settings$);
+    }
+  }
+
+  protected async setupStorage(): Promise<void> {
+    if (!this.storage) {
+      return;
+    }
+
+    this
+      .storage
+      .error$
+      .subscribe(this.error$);
+
     // device
     {
       let attributes = await this.storage.getDoc<IDeviceAttributes>(SdkStorageKeys.Device);
@@ -148,7 +351,15 @@ export class Sdk implements ISdk {
         .identity
         .attributes$
         .subscribe((attributes) => this.error$.wrapAsync(
-          this.storage.setDoc(SdkStorageKeys.Identity, attributes),
+          this.storage.setDoc(
+            SdkStorageKeys.Identity,
+            attributes && attributes.state === IdentityStates.Verified
+              ? {
+                ...attributes,
+                state: IdentityStates.Stored,
+              }
+              : null,
+          ),
         ));
     }
 
@@ -163,15 +374,169 @@ export class Sdk implements ISdk {
         .pipe(
           filter((settings) => !!settings),
         )
-        .subscribe((settings) => {
-          this.ens.attributes = settings.ens;
-          this.network.attributes = settings.network;
-          this.registry.attributes = settings.registry;
-
-          this.error$.wrapAsync(
-            this.storage.setDoc(SdkStorageKeys.Settings, settings),
-          );
-        });
+        .subscribe((settings) => this.error$.wrapAsync(
+          this.storage.setDoc(SdkStorageKeys.Settings, settings),
+        ));
     }
+  }
+
+  protected async setupApi(): Promise<void> {
+    this
+      .api
+      .wsMessage$
+      .pipe(
+        tap(({ type, payload }) => this.error$.wrapAsync(() => {
+          switch (type) {
+            case WsMessageTypes.SessionCreated: {
+              const { hash } = payload as WsMessagePayloads.ISession;
+              this.sessionHash = hash;
+              this.api.state = ApiStates.Connected;
+              break;
+            }
+
+            case WsMessageTypes.SessionVerified: {
+              this.api.state = ApiStates.Verified;
+              break;
+            }
+
+            case WsMessageTypes.IdentityCreated: {
+              const { ensNameHash, ...attributes } = payload as WsMessagePayloads.IIdentity;
+
+              this.identity.update({
+                ensNode: {
+                  nameHash: ensNameHash,
+                },
+                state: IdentityStates.Verified,
+                ...attributes,
+              });
+              break;
+            }
+
+            case WsMessageTypes.IdentityUpdated: {
+              this.identity.update(payload as WsMessagePayloads.IIdentity);
+              break;
+            }
+
+            case WsMessageTypes.SignedPersonalMessage: {
+              const { signer, signature } = payload as WsMessagePayloads.ISignedPersonalMessage;
+              try {
+
+                if (
+                  this.authAction &&
+                  signer &&
+                  signer === recoverAddressFromPersonalMessage(this.authAction.hash, signature)
+                ) {
+                  const { type, payload } = this.authAction;
+
+                  this.linker.incomingAction$.next({
+                    type,
+                    from: {
+                      type: LinkerTargetTypes.Device,
+                      data: signer,
+                    },
+                    payload,
+                  });
+
+                  this.deactivateAuthAction();
+                }
+              } catch (err) {
+                //
+              }
+              break;
+            }
+          }
+        })),
+      )
+      .subscribe();
+
+    this
+      .api
+      .state$
+      .pipe(
+        filter((state) => (
+          state !== ApiStates.Connected &&
+          state !== ApiStates.Verified
+        )),
+        tap(() => {
+          this.sessionHash = null;
+        }),
+      )
+      .subscribe();
+  }
+
+  protected async setupEns(): Promise<void> {
+    this
+      .settings$
+      .pipe(
+        map((settings) => !settings ? settings.ens : null),
+      )
+      .subscribe(this.ens.attributes$);
+  }
+
+  protected async setupNetwork(): Promise<void> {
+    this
+      .settings$
+      .pipe(
+        map((settings) => !settings ? settings.network : null),
+      )
+      .subscribe(this.network.attributes$);
+  }
+
+  protected async setupRegistry(): Promise<void> {
+    this
+      .settings$
+      .pipe(
+        map((settings) => !settings ? settings.registry : null),
+      )
+      .subscribe(this.registry.attributes$);
+  }
+
+  protected async setupLinker(): Promise<void> {
+    this
+      .linker
+      .acceptedAction$
+      .pipe(
+        tap(({ type, from, payload }) => {
+          this.error$.wrapAsync(async () => {
+            switch (type) {
+              case LinkerActionsTypes.SignPersonalMessage: {
+                const hash = await this.device.signPersonalMessage(payload);
+                switch (from.type) {
+                  case LinkerTargetTypes.Device:
+                    this.api.verifyPersonalMessage(from.data, hash);
+                    break;
+                }
+                break;
+              }
+
+              case LinkerActionsTypes.AddIdentityMember: {
+                let { purpose } = payload as LinkerActionPayloads.IAddMember;
+                const { address, limit, unlimited } = payload as LinkerActionPayloads.IAddMember;
+
+                if (!purpose) {
+                  purpose = this.identity.address;
+                } else {
+                  const record = await this.ens.lookup(purpose);
+
+                  if (!record || !record.address) {
+                    return; // TODO: error handling
+                  }
+                  purpose = record.address;
+                }
+
+                await this.identity.addMember({
+                  address,
+                  purpose,
+                  limit,
+                  unlimited,
+                });
+
+                break;
+              }
+            }
+          });
+        }),
+      )
+      .subscribe();
   }
 }

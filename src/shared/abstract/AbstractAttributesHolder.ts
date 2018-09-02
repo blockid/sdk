@@ -87,6 +87,9 @@ export abstract class AbstractAttributesHolder<T, K extends keyof T = keyof T> i
       )
       .subscribe(result);
 
+    result
+      .subscribe((value) => this.setAttribute(name, value));
+
     return result;
   }
 
@@ -113,6 +116,19 @@ export abstract class AbstractAttributesHolder<T, K extends keyof T = keyof T> i
     const attributes: any = this.attributes || {};
     attributes[ name ] = value;
     this.attributes = attributes;
+  }
+
+  /**
+   * updates attributes
+   * @param attributes
+   */
+  protected updateAttributes(attributes: Partial<T>): void {
+    this.attributes = attributes
+      ? {
+        ...(this.attributes || {}),
+        ...(attributes as any),
+      } as any
+      : null;
   }
 
   /**

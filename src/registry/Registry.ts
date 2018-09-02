@@ -1,6 +1,4 @@
 import { AbstractAttributesHolder } from "../shared";
-import { IApi } from "../api";
-import { getEnsNameInfo } from "../ens";
 import { INetwork } from "../network";
 import { IDevice } from "../device";
 import { IRegistry, IRegistryAttributes } from "./interfaces";
@@ -15,13 +13,11 @@ export class Registry extends AbstractAttributesHolder<IRegistryAttributes> impl
 
   /**
    * constructor
-   * @param api
    * @param network
    * @param device
    * @param attributes
    */
   constructor(
-    private api: IApi,
     network: INetwork,
     device: IDevice,
     attributes: IRegistryAttributes = null,
@@ -37,10 +33,10 @@ export class Registry extends AbstractAttributesHolder<IRegistryAttributes> impl
 
   /**
    * creates self identity
-   * @param name
+   * @param labelHash
+   * @param rootNodeNameHash
    */
-  public createSelfIdentity(name: string): Promise<string> {
-    const { labelHash, rootNode } = getEnsNameInfo(name);
-    return this.contract.createSelfIdentity(labelHash, rootNode.nameHash);
+  public createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string> {
+    return this.contract.createSelfIdentity(labelHash, rootNodeNameHash);
   }
 }

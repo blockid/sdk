@@ -2,10 +2,12 @@ import { TUniqueBehaviorSubject } from "../shared";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 
 export interface ILinker {
-  url$: TUniqueBehaviorSubject<string>;
-  url: string;
-  action$: TUniqueBehaviorSubject<ILinkerAction>;
-  action: ILinkerAction;
+  incomingUrl$: TUniqueBehaviorSubject<string>;
+  outgoingUrl$: TUniqueBehaviorSubject<string>;
+  incomingAction$: TUniqueBehaviorSubject<ILinkerAction>;
+  acceptedAction$: TUniqueBehaviorSubject<ILinkerAction>;
+  acceptAction(action?: ILinkerAction): void;
+  rejectAction(): void;
   buildActionUrl<F = any, P = any>(action: ILinkerAction<ILinkerApp, F, P>): string;
 }
 
