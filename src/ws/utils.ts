@@ -20,22 +20,25 @@ export function getWsMessagePayloadType(messageType: WsMessageTypes): Type {
     case WsMessageTypes.SessionCreated:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.Session ];
       break;
+
     case WsMessageTypes.VerifySession:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.SignedSession ];
       break;
+
     case WsMessageTypes.VerifyPersonalMessage:
     case WsMessageTypes.SignedPersonalMessage:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.SignedPersonalMessage ];
       break;
+
     case WsMessageTypes.IdentityCreated:
-    case WsMessageTypes.IdentityUpdated:
       result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.Identity ];
       break;
-    case WsMessageTypes.MemberAdded:
-    case WsMessageTypes.MemberLimitUpdated:
-    case WsMessageTypes.MemberManagerUpdated:
-    case WsMessageTypes.MemberRemoved:
-      result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.Member ];
+
+    case WsMessageTypes.IdentityMemberAdded:
+    case WsMessageTypes.IdentityMemberLimitUpdated:
+    case WsMessageTypes.IdentityMemberManagerUpdated:
+    case WsMessageTypes.IdentityMemberRemoved:
+      result = wsMessagePayloadTypes[ WsMessagePayloadTypeNames.IdentityMember ];
       break;
   }
 

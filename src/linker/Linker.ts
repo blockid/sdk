@@ -147,7 +147,7 @@ export class Linker implements ILinker {
         payload: JSON.stringify(payload, jsonReplacer),
       };
 
-      result = `${name}://${callbackUrl}?${stringify(query)}`;
+      result = `${name}://${callbackUrl || ""}?${stringify(query)}`;
     }
 
     return result;

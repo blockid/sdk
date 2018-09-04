@@ -29,6 +29,13 @@ export class IdentityContact extends Contract implements IIdentityContact {
   }
 
   /**
+   * balance getter
+   */
+  public get balance(): Promise<BN.IBN> {
+    return this.network.getBalance(this);
+  }
+
+  /**
    * nonce getter
    */
   public get nonce(): Promise<BN.IBN> {
@@ -40,17 +47,15 @@ export class IdentityContact extends Contract implements IIdentityContact {
 
   /**
    * adds member
+   * @param nonce
    * @param address
    * @param purpose
    * @param limit
    * @param unlimited
    */
-  public async addMember(address: string, purpose: string, limit: BN.IBN, unlimited: boolean): Promise<string> {
-    const nonce = await this.nonce;
-    const result = await this.send("addMember", nonce, address, purpose, limit, unlimited)({
+  public addMember(nonce: BN.IBN, address: string, purpose: string, limit: BN.IBN, unlimited: boolean): Promise<string> {
+    return this.send("addMember", nonce, address, purpose, limit, unlimited)({
       //
     });
-
-    return result;
   }
 }

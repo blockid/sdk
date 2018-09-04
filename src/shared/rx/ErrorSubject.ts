@@ -8,6 +8,14 @@ import { TErrorSubjectWrapped } from "./types";
 export class ErrorSubject extends Subject<any> implements IErrorSubject {
 
   /**
+   * error
+   * @param err
+   */
+  public error(err: any): void {
+    this.next(err);
+  }
+
+  /**
    * wraps async
    * @param wrapped
    */

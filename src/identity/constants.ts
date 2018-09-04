@@ -1,7 +1,10 @@
 export enum IdentityStates {
   Creating = "CREATING",
-  Stored = "STORED",
   Pending = "PENDING",
   Verified = "VERIFIED",
-  Disconnected = "DISCONNECTED",
+}
+
+export enum IdentityInteractionModes {
+  Direct = "DIRECT",
+  GasRelated = "GAS_RELATED",
 }

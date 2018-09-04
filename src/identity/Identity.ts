@@ -1,17 +1,23 @@
+import * as BN from "bn.js";
 import { IApi } from "../api";
 import { IDevice } from "../device";
-import { INetwork } from "../network";
 import { IEnsNode } from "../ens";
-import { AbstractAttributesHolder } from "../shared";
-import { IdentityStates } from "./constants";
+import { INetwork } from "../network";
+import { AbstractAttributesHolder, UniqueBehaviorSubject } from "../shared";
+import { IdentityInteractionModes, IdentityStates } from "./constants";
+import { IdentityContact, IIdentityContact } from "./contracts";
 import { errIdentityInvalidState } from "./errors";
 import { IIdentity, IIdentityAttributes, IIdentityMember } from "./interfaces";
-import { IIdentityContact, IdentityContact } from "./contracts";
 
 /**
  * Identity
  */
 export class Identity extends AbstractAttributesHolder<IIdentityAttributes> implements IIdentity {
+
+  /**
+   * members subject
+   */
+  public members$ = new UniqueBehaviorSubject<IIdentityMember[]>(null);
 
   private contract: IIdentityContact;
 
@@ -20,16 +26,17 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
    * @param api
    * @param network
    * @param device
+   * @param interactionModes
    */
-  constructor(private api: IApi, network: INetwork, private device: IDevice) {
+  constructor(
+    private api: IApi, network: INetwork,
+    private device: IDevice,
+    private interactionModes = IdentityInteractionModes.GasRelated,
+  ) {
     super({
       address: true,
       state: true,
       ensNode: true,
-      nonce: true,
-      balance: true,
-      createdAt: true,
-      updatedAt: true,
     });
 
     this.contract = new IdentityContact(network, device);
@@ -40,10 +47,17 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
   }
 
   /**
-   * sets state as creating
-   * @param attributes
+   * balance getter
    */
-  public setStateAsCreating({ ensNode }: Partial<IIdentityAttributes>): void {
+  public get balance(): Promise<BN.IBN> {
+    return this.contract.balance;
+  }
+
+  /**
+   * sets state as creating
+   * @param ensNode
+   */
+  public setStateAsCreating(ensNode: IEnsNode): void {
     this.attributes = {
       address: null,
       ensNode,
@@ -53,9 +67,10 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
 
   /**
    * sets state as pending
-   * @param attributes
+   * @param address
+   * @param ensNode
    */
-  public setStateAsPending({ address, ensNode }: Partial<IIdentityAttributes>): void {
+  public setStateAsPending(address: string, ensNode: IEnsNode): void {
     this.attributes = {
       address,
       ensNode,
@@ -74,9 +89,9 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
       address &&
       address && this.getAttribute("address")
     ) || (
-      ensNode &&
       this.getAttribute("ensNode") &&
-      ensNode.nameHash === (this.getAttribute("ensNode") as Partial<IEnsNode>).nameHash
+      ensNode &&
+      ensNode.nameHash === this.getAttribute<IEnsNode>("ensNode").nameHash
     )) {
       this.updateAttributes(attributes);
     }
@@ -84,19 +99,79 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
 
   /**
    * adds member
+   * @param member
+   */
+  public addMember(member: IIdentityMember): void {
+    if (member) {
+      const { value } = this.members$;
+      if (value) {
+        this.members$.next([
+          ...value,
+          member as any,
+        ]);
+      }
+    }
+  }
+
+  /**
+   * updates member
+   * @param member
+   */
+  public updateMember(member: Partial<IIdentityMember>): void {
+    if (member) {
+      const { value } = this.members$;
+      // TODO
+    }
+  }
+
+  /**
+   * removes member
+   * @param member
+   */
+  public removeMember(member: Partial<IIdentityMember>): void {
+    if (member) {
+      const { value } = this.members$;
+      // TODO
+    }
+  }
+
+  /**
+   * sends add member
    * @param address
    * @param purpose
    * @param limit
-   * @param unlimited
    */
-  public async addMember({ address, purpose, limit, unlimited }: Partial<IIdentityMember>): Promise<boolean> {
+  public async sendAddMember({ address, purpose, limit }: Partial<IIdentityMember>): Promise<boolean> {
     this.verifyState(IdentityStates.Verified);
 
     let hash: string = null;
-    if (this.device.hasPrivateKey) {
-      hash = await this.contract.addMember(address, purpose, limit, unlimited);
-    } else {
-      // TODO: gas related
+
+    const nonce = await this.contract.nonce;
+
+    if (!purpose) {
+      purpose = this.getAttribute("address") as string;
+    }
+
+    let unlimited = false;
+
+    if (!limit) {
+      unlimited = true;
+      limit = new BN(0);
+    }
+
+    switch (this.interactionModes) {
+      case IdentityInteractionModes.GasRelated:
+        break;
+
+      case IdentityInteractionModes.Direct:
+        hash = await this.contract.addMember(
+          nonce,
+          address,
+          purpose,
+          limit,
+          unlimited,
+        );
+        break;
     }
 
     return !!hash;

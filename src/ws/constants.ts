@@ -15,13 +15,12 @@ export enum WsMessageTypes {
 
   // identity
   IdentityCreated = 0x21,
-  IdentityUpdated = 0x22,
 
-  // member
-  MemberAdded = 0x31,
-  MemberLimitUpdated = 0x32,
-  MemberManagerUpdated = 0x33,
-  MemberRemoved = 0x34,
+  // identity member
+  IdentityMemberAdded = 0x31,
+  IdentityMemberLimitUpdated = 0x32,
+  IdentityMemberManagerUpdated = 0x33,
+  IdentityMemberRemoved = 0x34,
 }
 
 export enum WsMessagePayloadTypeNames {
@@ -29,7 +28,7 @@ export enum WsMessagePayloadTypeNames {
   SignedSession = "SignedSession",
   SignedPersonalMessage = "SignedPersonalMessage",
   Identity = "Identity",
-  Member = "Member",
+  IdentityMember = "IdentityMember",
 }
 
 const wsMessagePayloadNamespace = Namespace
@@ -75,34 +74,14 @@ const wsMessagePayloadNamespace = Namespace
               type: "bytes",
               id: 1,
             },
-            nonce: {
+            ensNameHash: {
               type: "bytes",
               id: 2,
               rule: "optional",
             },
-            balance: {
-              type: "bytes",
-              id: 3,
-              rule: "optional",
-            },
-            ensNameHash: {
-              type: "bytes",
-              id: 4,
-              rule: "optional",
-            },
-            createdAt: {
-              type: "uint32",
-              id: 5,
-              rule: "optional",
-            },
-            updatedAt: {
-              type: "uint32",
-              id: 6,
-              rule: "optional",
-            },
           },
         },
-        [ WsMessagePayloadTypeNames.Member ]: {
+        [ WsMessagePayloadTypeNames.IdentityMember ]: {
           fields: {
             identity: {
               type: "bytes",
@@ -122,24 +101,9 @@ const wsMessagePayloadNamespace = Namespace
               id: 4,
               rule: "optional",
             },
-            unlimited: {
-              type: "bool",
-              id: 5,
-              rule: "optional",
-            },
-            manager: {
-              type: "bytes",
-              id: 6,
-              rule: "optional",
-            },
-            createdAt: {
-              type: "uint32",
-              id: 7,
-              rule: "optional",
-            },
             updatedAt: {
               type: "uint32",
-              id: 8,
+              id: 5,
               rule: "optional",
             },
           },
@@ -158,9 +122,6 @@ export const wsMessagePayloadBytesMapper: { [ key: string ]: any } = {
   signer: String,
   identity: String,
   purpose: String,
-  manager: String,
-  nonce: BN,
-  balance: BN,
   limit: BN,
 };
 
@@ -169,5 +130,5 @@ export const wsMessagePayloadTypes: { [ key: string ]: Type } = {
   SignedSession: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.SignedSession),
   SignedPersonalMessage: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.SignedPersonalMessage),
   Identity: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.Identity),
-  Member: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.Member),
+  IdentityMember: wsMessagePayloadNamespace.lookupType(WsMessagePayloadTypeNames.IdentityMember),
 };

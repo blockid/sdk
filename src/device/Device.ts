@@ -30,13 +30,6 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
   }
 
   /**
-   * has private key getter
-   */
-  public get hasPrivateKey(): boolean {
-    return !!this.getAttribute("privateKey");
-  }
-
-  /**
    * gets balance
    */
   public getBalance(): Promise<IBN> {

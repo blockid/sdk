@@ -9,36 +9,28 @@ export interface IIdentity extends IAbstractAttributesHolder<IIdentityAttributes
   address?: string;
   state$?: TUniqueBehaviorSubject<IdentityStates>;
   state?: IdentityStates;
-  ensNode$?: TUniqueBehaviorSubject<Partial<IEnsNode>>;
-  ensNode?: Partial<IEnsNode>;
-  balance$?: TUniqueBehaviorSubject<IBN>;
-  balance?: IBN;
-  nonce$?: TUniqueBehaviorSubject<IBN>;
-  nonce?: IBN;
-  createdAt$?: TUniqueBehaviorSubject<number>;
-  createdAt?: number;
-  updatedAt$?: TUniqueBehaviorSubject<number>;
-  updatedAt?: number;
-  setStateAsCreating(attributes: Partial<IIdentityAttributes>): void;
-  setStateAsPending(attributes: Partial<IIdentityAttributes>): void;
+  ensNode$?: TUniqueBehaviorSubject<IEnsNode>;
+  ensNode?: IEnsNode;
+  members$: TUniqueBehaviorSubject<IIdentityMember[]>;
+  balance: Promise<IBN>;
+  setStateAsCreating(ensNode: IEnsNode): void;
+  setStateAsPending(address: string, ensNode: IEnsNode): void;
   update(attributes: Partial<IIdentityAttributes>): void;
-  addMember(member: Partial<IIdentityMember>): Promise<boolean>;
+  addMember(member: IIdentityMember): void;
+  removeMember(member: Partial<IIdentityMember>): void;
+  updateMember(member: Partial<IIdentityMember>): void;
+  sendAddMember(member: Partial<IIdentityMember>): Promise<boolean>;
 }
 
 export interface IIdentityAttributes {
   address?: string;
   state: IdentityStates;
-  ensNode: Partial<IEnsNode>;
-  balance?: IBN;
-  nonce?: IBN;
-  createdAt?: number;
-  updatedAt?: number;
+  ensNode: IEnsNode;
 }
 
 export interface IIdentityMember {
   address: string;
   purpose: string;
   limit: IBN;
-  unlimited: boolean;
-  manager: string;
+  updatedAt?: number;
 }

@@ -2,7 +2,13 @@ import { IApi, IApiOptions } from "../api";
 import { IDevice } from "../device";
 import { IEns } from "../ens";
 import { IIdentity } from "../identity";
-import { ILinker, ILinkerApp, ILinkerOptions, LinkerActionsTypes } from "../linker";
+import {
+  ILinker,
+  ILinkerApp,
+  ILinkerOptions,
+  LinkerActionsTypes,
+  LinkerTargetTypes,
+} from "../linker";
 import { INetwork } from "../network";
 import { IRegistry } from "../registry";
 import { IStorageOptions } from "../storage";
@@ -22,10 +28,10 @@ export interface ISdk {
   network: INetwork;
   registry: IRegistry;
   signAndVerifyApiSession(): void;
-  muteSession(): void;
-  unMuteSession(): void;
+  muteApiSession(): void;
+  unMuteApiSession(): void;
   createSelfIdentity(name: string): Promise<boolean>;
-  signInToIdentity(name: string, toApp?: ILinkerApp): Promise<string>;
+  signInToIdentity(name: string, fromType?: LinkerTargetTypes, toApp?: ILinkerApp): Promise<string>;
   activateAuthAction(authAction: Partial<ISdkAuthAction>): string;
   deactivateAuthAction(): void;
 }

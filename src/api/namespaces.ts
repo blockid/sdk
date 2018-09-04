@@ -13,19 +13,13 @@ export namespace ApiResponses {
 
   export interface IIdentity {
     address: string;
-    nonce: IBN;
-    balance: IBN;
-    createdAt: number;
-    updatedAt: number;
   }
 
   export interface IIdentityMember {
     address: string;
     purpose: string;
     limit: IBN;
-    unlimited: boolean;
     manager: string;
-    createdAt: number;
     updatedAt: number;
   }
 }

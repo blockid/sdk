@@ -98,12 +98,12 @@ export abstract class AbstractAttributesHolder<T, K extends keyof T = keyof T> i
    * @param name
    * @param defaults
    */
-  protected getAttribute(name: K, defaults: T[K] = null): T[K] {
+  protected getAttribute<R = T[K]>(name: K, defaults: T[K] = null): R {
     return (
       this.attributes &&
       typeof this.attributes[ name ] !== "undefined"
     )
-      ? this.attributes[ name ]
+      ? this.attributes[ name ] as any
       : defaults;
   }
 
