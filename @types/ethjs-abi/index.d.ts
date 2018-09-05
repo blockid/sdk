@@ -33,5 +33,7 @@ declare module "ethjs-abi" {
   export const decodeMethod: (abiItem: IAbiItem, data: string) => IResult;
   export const decodeEvent: (abiItem: IAbiItem, data: string) => IResult;
 
+  export const encodeSignature: (abiItem: IAbiItem) => string;
+
   export const logDecoder: (abi: TAbi) => TLogDecoder;
 }

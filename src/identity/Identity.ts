@@ -3,9 +3,9 @@ import { IApi } from "../api";
 import { IDevice } from "../device";
 import { IEnsNode } from "../ens";
 import { INetwork } from "../network";
-import { AbstractAttributesHolder, UniqueBehaviorSubject } from "../shared";
+import { AbstractAttributesHolder, UniqueBehaviorSubject, buildPersonalMessage } from "../shared";
 import { IdentityInteractionModes, IdentityStates } from "./constants";
-import { IdentityContact, IIdentityContact } from "./contracts";
+import { IdentityContract, IIdentityContract } from "./contracts";
 import { errIdentityInvalidState } from "./errors";
 import { IIdentity, IIdentityAttributes, IIdentityMember } from "./interfaces";
 
@@ -19,7 +19,7 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
    */
   public members$ = new UniqueBehaviorSubject<IIdentityMember[]>(null);
 
-  private contract: IIdentityContact;
+  private contract: IIdentityContract;
 
   /**
    * constructor
@@ -29,7 +29,8 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
    * @param interactionModes
    */
   constructor(
-    private api: IApi, network: INetwork,
+    private api: IApi,
+    private network: INetwork,
     private device: IDevice,
     private interactionModes = IdentityInteractionModes.GasRelated,
   ) {
@@ -39,7 +40,7 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
       ensNode: true,
     });
 
-    this.contract = new IdentityContact(network, device);
+    this.contract = new IdentityContract(network, device);
 
     this
       .getAttribute$("address")
@@ -148,8 +149,10 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
 
     const nonce = await this.contract.nonce;
 
+    const identityAddress = this.getAttribute<string>("address");
+
     if (!purpose) {
-      purpose = this.getAttribute("address") as string;
+      purpose = identityAddress;
     }
 
     let unlimited = false;
@@ -160,8 +163,55 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
     }
 
     switch (this.interactionModes) {
-      case IdentityInteractionModes.GasRelated:
+      case IdentityInteractionModes.GasRelated: {
+        const methodName = "gasRelayedAddMember";
+        const methodSignature = this.contract.getMethodSignature(methodName);
+
+        const args = [
+          nonce,
+          address,
+          purpose,
+          limit,
+          unlimited,
+        ];
+
+        const extraGas = this.contract.estimateExtraGas(
+          methodName,
+          ...args,
+        );
+
+        const gasPrice = await this.network.getGasPrice();
+
+        const message = buildPersonalMessage(
+          "address", // identity address
+          "bytes",   // method signature
+          "uint256", // nonce
+          "address", // member
+          "address", // purpose
+          "uint256", // limit
+          "bool",    // unlimited
+          "uint256", // extra gas
+          "uint256", // gas price
+        )(
+          identityAddress,
+          methodSignature,
+          ...args,
+          extraGas,
+          gasPrice,
+        );
+
+        const messageSignature = await this.device.signPersonalMessage(message);
+
+        const res = await this.api.callIdentityMethod(identityAddress, methodName, {
+          args,
+          gasPrice,
+          extraGas,
+          messageSignature,
+        });
+
+        hash = res.hash;
         break;
+      }
 
       case IdentityInteractionModes.Direct:
         hash = await this.contract.addMember(

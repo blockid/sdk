@@ -1,10 +1,12 @@
 import { IBN } from "bn.js";
+import * as EthereumTx from "ethereumjs-tx";
 import { privateKeyVerify, publicKeyVerify, publicKeyCreate } from "secp256k1";
 import {
   AbstractAttributesHolder,
   signPersonalMessage,
   publicKeyToAddress,
   prepareAddress,
+  anyToHex,
 } from "../shared";
 import { INetwork, INetworkTransactionOptions } from "../network";
 import { IDevice, IDeviceAttributes } from "./interfaces";
@@ -81,7 +83,30 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
     const { address, privateKey } = this.attributes;
 
     if (privateKey) {
-      // TODO: sign and send raw transaction
+      const { data, gasPrice, gas, value, to, nonce } = options;
+
+      const hexOptions = {
+        add0x: true,
+        evenLength: true,
+      };
+
+      const params = {
+        to,
+        nonce: anyToHex(nonce, hexOptions),
+        gasPrice: anyToHex(gasPrice, hexOptions),
+        gasLimit: anyToHex(gas, hexOptions),
+        value: anyToHex(value, hexOptions),
+        data: anyToHex(data, hexOptions),
+      };
+
+      const ethereumTx = new EthereumTx(params);
+
+      ethereumTx.sign(privateKey);
+
+      const raw = ethereumTx.serialize();
+
+      result = await this.network.sendRawTransaction(raw);
+
     } else {
       result = await this.network.sendTransaction({
         ...options,

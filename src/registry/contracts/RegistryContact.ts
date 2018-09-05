@@ -25,8 +25,6 @@ export class RegistryContact extends Contract implements IRegistryContact {
    * @param rootNodeNameHash
    */
   public createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string> {
-    return this.send("createSelfIdentity", labelHash, rootNodeNameHash)({
-      //
-    });
+    return this.send("createSelfIdentity", labelHash, rootNodeNameHash)();
   }
 }

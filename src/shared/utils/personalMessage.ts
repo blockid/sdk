@@ -19,7 +19,6 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
       if (typeof args[ index ] !== "undefined") {
         const type = types[ index ];
         const arg = args[ index ];
-
         switch (type) {
           case "bool":
             buffers.push(anyToBuffer(!!arg));
@@ -38,7 +37,7 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
 
           default:
             const matched = type.match(/\d+/g);
-            const size = Array.isArray(matched) && matched.length
+            let size = Array.isArray(matched) && matched.length
               ? parseInt(matched[ 0 ], 10)
               : 0;
 
@@ -46,8 +45,10 @@ export function buildPersonalMessage(...types: string[]): (...args: any[]) => Bu
               size &&
               size % 8 === 0
             ) {
+              size = parseInt(matched[ 0 ], 10) / 8;
+
               buffers.push(anyToBuffer(arg, {
-                size: parseInt(matched[ 0 ], 10) / 8,
+                size,
               }));
             } else {
               return null;

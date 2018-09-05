@@ -52,7 +52,8 @@ export function anyToBuffer(data: any = Buffer.alloc(0), options: IAnyToBufferOp
       if (Buffer.isBuffer(data)) {
         result = data;
       } else if (BN.isBN(data)) {
-        result = (data as BN.IBN).toBuffer();
+        const hex = prepareHex((data as BN.IBN).toString(16), { evenLength: true });
+        result = Buffer.from(hex, "hex");
       } else if (data instanceof Uint8Array) {
         result = Buffer.from([
           ...data,

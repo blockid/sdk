@@ -9,6 +9,7 @@ export function anyToHex(data: any = Buffer.alloc(0), options: {
   length?: number;
   add0x?: boolean;
   autoStringDetect?: boolean;
+  evenLength?: boolean;
   defaults?: string;
 } = {}): string {
 
@@ -16,6 +17,7 @@ export function anyToHex(data: any = Buffer.alloc(0), options: {
     length: 0,
     add0x: false,
     autoStringDetect: false,
+    evenLength: false,
     defaults: null,
     ...options,
   };
@@ -61,6 +63,10 @@ export function anyToHex(data: any = Buffer.alloc(0), options: {
 
     if (options.length > result.length) {
       result = `${"0".repeat(options.length - result.length)}${result}`;
+    }
+
+    if (options.evenLength && result.length % 2) {
+      result = `0${result}`;
     }
 
     if (options.add0x) {

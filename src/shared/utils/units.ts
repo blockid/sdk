@@ -13,8 +13,8 @@ export enum Units {
 const base = new BN(10);
 
 const unitsPow: { [ key: string ]: BN.IBN } = {
-  [ Units.Wei ]: new BN(1 ),
-  [ Units.Kwei ]: base.pow(new BN(3 )),
+  [ Units.Wei ]: new BN(1),
+  [ Units.Kwei ]: base.pow(new BN(3)),
   [ Units.Mwei ]: base.pow(new BN(6)),
   [ Units.Gwei ]: base.pow(new BN(9)),
   [ Units.Szabo ]: base.pow(new BN(12)),
@@ -40,8 +40,8 @@ export function convertUnit(value: number | BN.IBN, from: Units = Units.Wei, to:
   } else {
 
     try {
-      const fromPow = unitsPow[from];
-      const toPow = unitsPow[to];
+      const fromPow = unitsPow[ from ];
+      const toPow = unitsPow[ to ];
 
       if (fromPow.gt(toPow)) {
         result = value.mul(fromPow.div(toPow));
@@ -55,4 +55,13 @@ export function convertUnit(value: number | BN.IBN, from: Units = Units.Wei, to:
   }
 
   return result;
+}
+
+/**
+ * converts eth to wei
+ * @param value
+ */
+export function ethToWei(value: number): BN.IBN {
+  value = Math.floor(value * Math.pow(10, 6));
+  return convertUnit(value, Units.Szabo, Units.Wei);
 }

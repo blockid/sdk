@@ -1,14 +1,15 @@
 import * as BN from "bn.js";
-import { Contract } from "../../contract";
+import { Contract, TContractEstimateResult, TContractSendResult } from "../../contract";
 import { IDevice } from "../../device";
 import { INetwork } from "../../network";
-import { IIdentityContact } from "./interfaces";
+import { anyToBuffer } from "../../shared/utils";
+import { IIdentityContract } from "./interfaces";
 import abi from "./IdentityAbi";
 
 /**
- * Identity contact
+ * Identity contract
  */
-export class IdentityContact extends Contract implements IIdentityContact {
+export class IdentityContract extends Contract implements IIdentityContract {
 
   /**
    * constructor
@@ -24,8 +25,8 @@ export class IdentityContact extends Contract implements IIdentityContact {
    * at
    * @param address
    */
-  public at(address: string): IIdentityContact {
-    return new IdentityContact(this.network, this.device, address);
+  public at(address: string): IIdentityContract {
+    return new IdentityContract(this.network, this.device, address);
   }
 
   /**
@@ -46,6 +47,53 @@ export class IdentityContact extends Contract implements IIdentityContact {
   }
 
   /**
+   * estimates extra gas
+   * @param methodName
+   * @param args
+   */
+  public estimateExtraGas(methodName: string, ...args: any[]): BN.IBN {
+    let result: BN.IBN = null;
+
+    if (methodName.startsWith("gasRelayed")) {
+      let extraGas = 7600 + 200;
+
+      const signature = Buffer.alloc(65).fill(0xFF);
+      const data = anyToBuffer(this.encodeMethodInput(
+        methodName,
+        ...args,
+        0,
+        signature,
+      ));
+
+      for (const value of data) {
+        extraGas += value ? 68 : 4;
+      }
+
+      result = new BN(extraGas, 10);
+    }
+
+    return result;
+  }
+
+  /**
+   * sends gas relayed method
+   * @param methodName
+   * @param args
+   */
+  public sendGasRelayedMethod(methodName: string, ...args: any[]): TContractSendResult {
+    return this.send(methodName, ...args);
+  }
+
+  /**
+   * estimates gas relayed method
+   * @param methodName
+   * @param args
+   */
+  public estimateGasRelayedMethod(methodName: string, ...args: any[]): TContractEstimateResult {
+    return this.estimate(methodName, ...args);
+  }
+
+  /**
    * adds member
    * @param nonce
    * @param address
@@ -54,8 +102,6 @@ export class IdentityContact extends Contract implements IIdentityContact {
    * @param unlimited
    */
   public addMember(nonce: BN.IBN, address: string, purpose: string, limit: BN.IBN, unlimited: boolean): Promise<string> {
-    return this.send("addMember", nonce, address, purpose, limit, unlimited)({
-      //
-    });
+    return this.send("addMember", nonce, address, purpose, limit, unlimited)();
   }
 }

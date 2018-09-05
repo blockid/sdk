@@ -7,10 +7,17 @@ import {
   logDecoder,
   decodeMethod,
   encodeMethod,
+  encodeSignature,
 } from "ethjs-abi";
 import { IDevice } from "../device";
 import { INetwork, INetworkTransactionOptions } from "../network";
-import { sha3, TUniqueBehaviorSubject, UniqueBehaviorSubject } from "../shared";
+import {
+  sha3,
+  TUniqueBehaviorSubject,
+  UniqueBehaviorSubject,
+  anyToHex,
+  anyToBuffer,
+} from "../shared";
 import { IContract } from "./interfaces";
 import { TContractSendResult, TContractEstimateResult } from "./types";
 import {
@@ -58,8 +65,7 @@ export class Contract implements IContract {
       switch (abiItem.type) {
         case "function":
           if (abiItem.name) {
-            const inputTypes = (abiItem.inputs || []).map(({ type }) => type);
-            const signature = sha3(`${abiItem.name}(${inputTypes.join(",")})`).slice(0, 10);
+            const signature = anyToBuffer(encodeSignature(abiItem));
             this.methods[ abiItem.name ] = {
               abiItem,
               signature,
@@ -107,11 +113,19 @@ export class Contract implements IContract {
   }
 
   /**
+   * gets method signature
+   * @param methodName
+   */
+  public getMethodSignature(methodName: string): Buffer {
+    return this.methods[ methodName ] ? this.methods[ methodName ].signature : null;
+  }
+
+  /**
    * encodes method input
    * @param methodName
    * @param args
    */
-  protected encodeMethodInput(methodName: string, ...args: any[]): string {
+  public encodeMethodInput(methodName: string, ...args: any[]): string {
     let result: string = null;
 
     const method = this.methods[ methodName ];
@@ -127,7 +141,7 @@ export class Contract implements IContract {
    * @param methodName
    * @param data
    */
-  protected decodeMethodOutput<T = IResult>(methodName: string, data: string): T {
+  public decodeMethodOutput<T = IResult>(methodName: string, data: string): T {
     let result: T = null;
 
     const method = this.methods[ methodName ];
@@ -143,14 +157,14 @@ export class Contract implements IContract {
    * @param methodName
    * @param args
    */
-  protected async call<T = IResult>(methodName: string, ...args: string[]): Promise<T> {
+  protected async call<T = IResult>(methodName: string, ...args: any[]): Promise<T> {
     this.verifyNetwork();
     this.verifyAddress();
 
-    const input = this.encodeMethodInput(methodName, ...args);
+    const data = this.encodeMethodInput(methodName, ...args);
     const output = await this.network.callMessage({
       to: this.address,
-      data: input,
+      data,
     });
 
     return this.decodeMethodOutput<T>(methodName, output);
@@ -159,7 +173,6 @@ export class Contract implements IContract {
   /**
    * send
    * @param methodName
-   * @param value
    * @param args
    */
   protected send(methodName: string, ...args: any[]): TContractSendResult {
@@ -169,7 +182,7 @@ export class Contract implements IContract {
 
     const data = this.encodeMethodInput(methodName, ...args);
 
-    return (options: Partial<INetworkTransactionOptions>) => this.device.sendTransaction({
+    return (options: Partial<INetworkTransactionOptions> = {}) => this.device.sendTransaction({
       to: this.address,
       data,
       ...options,
@@ -179,7 +192,6 @@ export class Contract implements IContract {
   /**
    * estimate
    * @param methodName
-   * @param value
    * @param args
    */
   protected estimate(methodName: string, ...args: any[]): TContractEstimateResult {
@@ -188,7 +200,7 @@ export class Contract implements IContract {
 
     const data = this.encodeMethodInput(methodName, ...args);
 
-    return (options: Partial<INetworkTransactionOptions>) => this.network.estimateTransaction({
+    return (options: Partial<INetworkTransactionOptions> = {}) => this.network.estimateTransaction({
       to: this.address,
       data,
       ...options,

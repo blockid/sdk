@@ -275,7 +275,7 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
     const options: Partial<ISendTransactionOptions> = {};
 
     if (from) {
-      options.to = anyToHex(to, { add0x: true });
+      options.from = anyToHex(from, { add0x: true });
     }
 
     if (to) {

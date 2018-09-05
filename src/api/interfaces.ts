@@ -18,6 +18,7 @@ export interface IApi {
   getIdentity(identity: string): Promise<ApiResponses.IIdentity>;
   getIdentityMembers(identity: string): Promise<ApiResponses.IIdentityMember[]>;
   getIdentityMember(identity: string, member: string): Promise<ApiResponses.IIdentityMember>;
+  callIdentityMethod(identity: string, method: string, body: any): Promise<ApiResponses.IIdentityMethodCall>;
 }
 
 export interface IApiOptions {
@@ -39,8 +40,5 @@ export interface IApiConnection {
 export interface IApiRequest {
   method?: string;
   path: string;
-  options?: {
-    headers?: { [ key: string ]: any };
-    body?: { [ key: string ]: any };
-  };
+  body?: { [ key: string ]: any };
 }

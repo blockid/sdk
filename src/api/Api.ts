@@ -226,6 +226,21 @@ export class Api implements IApi {
   }
 
   /**
+   * POST /identity/:identity/:method
+   * @para identity
+   * @para method
+   * @para data
+   */
+  public callIdentityMethod(identity: string, method: string, body: any): Promise<ApiResponses.IIdentityMethodCall> {
+    return this
+      .call({
+        path: `identity/${identity}/${method}`,
+        method: "POST",
+        body,
+      });
+  }
+
+  /**
    * GET /identity/:identity/member/:member
    * @para identityAddress
    * @para memberAddress
@@ -256,17 +271,10 @@ export class Api implements IApi {
 
     const endpoint = this.getEndpoint("http");
 
-    const { path } = req;
-    let { method, options } = req;
+    const { path, body } = req;
+    let { method } = req;
 
     method = method || "GET";
-    options = {
-      headers: {},
-      body: {},
-      ...(options || {}),
-    };
-
-    const { headers, body } = options;
 
     let result: T = null;
 
@@ -274,12 +282,11 @@ export class Api implements IApi {
       method,
       headers: new Headers({
         "Content-Type": "application/json",
-        ...headers,
       }),
       ...(
         method !== "GET" &&
         method !== "HEAD"
-          ? { body: JSON.stringify(body, jsonReplacer) }
+          ? { body: JSON.stringify(body || {}, jsonReplacer) }
           : {}
       ),
     });

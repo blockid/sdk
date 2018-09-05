@@ -15,6 +15,10 @@ export namespace ApiResponses {
     address: string;
   }
 
+  export interface IIdentityMethodCall {
+    hash: string;
+  }
+
   export interface IIdentityMember {
     address: string;
     purpose: string;
