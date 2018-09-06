@@ -230,7 +230,7 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
 
     return this
       .eth
-      .call(options, "latest");
+      .call(options, "pending");
   }
 
   /**
