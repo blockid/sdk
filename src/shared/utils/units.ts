@@ -65,3 +65,12 @@ export function ethToWei(value: number): BN.IBN {
   value = Math.floor(value * Math.pow(10, 6));
   return convertUnit(value, Units.Szabo, Units.Wei);
 }
+
+/**
+ * converts wei to eth
+ * @param value
+ */
+export function weiToEth(value: BN.IBN): number {
+  value = convertUnit(value, Units.Wei, Units.Szabo);
+  return value.toNumber() / 6;
+}
