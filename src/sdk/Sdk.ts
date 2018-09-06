@@ -1,5 +1,6 @@
+import { IBN } from "bn.js";
 import { randomBytes } from "crypto";
-import { concat, from } from "rxjs";
+import { concat, from, Observable, of } from "rxjs";
 import { filter, map, switchMap, tap } from "rxjs/operators";
 import { Api, ApiStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
@@ -113,6 +114,7 @@ export class Sdk implements ISdk {
         this.setupApi();
         this.setupEns();
         this.setupRegistry();
+        this.setupIdentity();
         this.setupNetwork();
         this.setupLinker();
       } catch (err) {
@@ -407,7 +409,7 @@ export class Sdk implements ISdk {
       .wsMessage$
       .pipe(
         filter((value) => !!value),
-        tap(({ type, payload }) => this.error$.wrapAsync(() => {
+        tap(({ type, payload }) => this.error$.wrapAsync(async () => {
           switch (type) {
             case WsMessageTypes.SessionCreated: {
               const { hash } = payload as WsMessagePayloads.ISession;
@@ -458,6 +460,12 @@ export class Sdk implements ISdk {
               break;
             }
 
+            case WsMessageTypes.IdentityBalanceUpdated: {
+              const balance = await this.identity.balance;
+              this.identity.balance$.next(balance);
+              break;
+            }
+
             case WsMessageTypes.IdentityMemberAdded: {
               const { identity, ...member } = payload as WsMessagePayloads.IIdentityMember;
 
@@ -493,7 +501,11 @@ export class Sdk implements ISdk {
               const { identity, ...member } = payload as WsMessagePayloads.IIdentityMember;
 
               if (identity === this.identity.address) {
-                this.identity.removeMember(member);
+                if (member.address === this.device.address) {
+                  this.identity.attributes = null;
+                } else {
+                  this.identity.removeMember(member);
+                }
               }
 
               break;
@@ -543,6 +555,35 @@ export class Sdk implements ISdk {
         map((settings) => settings ? settings.registry : null),
       )
       .subscribe(this.registry.attributes$);
+  }
+
+  protected setupIdentity(): void {
+    this
+      .identity
+      .state$
+      .pipe(
+        switchMap((state) => {
+          let result: Observable<IBN> = of(null);
+
+          switch (state) {
+            case IdentityStates.Verified:
+              result = from(this.error$.wrapTAsync(this.identity.balance));
+              break;
+          }
+
+          return result;
+        }),
+      )
+      .subscribe(this.identity.balance$);
+
+    this
+      .identity
+      .state$
+      .pipe(
+        filter((state) => state !== IdentityStates.Verified),
+        map(() => null),
+      )
+      .subscribe(this.identity.members$);
   }
 
   protected setupLinker(): void {

@@ -12,14 +12,17 @@ export interface IIdentity extends IAbstractAttributesHolder<IIdentityAttributes
   ensNode$?: TUniqueBehaviorSubject<IEnsNode>;
   ensNode?: IEnsNode;
   members$: TUniqueBehaviorSubject<IIdentityMember[]>;
+  balance$?: TUniqueBehaviorSubject<IBN>;
   balance: Promise<IBN>;
   setStateAsCreating(ensNode: IEnsNode): void;
   setStateAsPending(address: string, ensNode: IEnsNode): void;
   update(attributes: Partial<IIdentityAttributes>): void;
+  fetchMembers(): Promise<void>;
   addMember(member: IIdentityMember): void;
   removeMember(member: Partial<IIdentityMember>): void;
   updateMember(member: Partial<IIdentityMember>): void;
   sendAddMember(member: Partial<IIdentityMember>): Promise<boolean>;
+  sendRemoveMember(member: Partial<IIdentityMember>): Promise<boolean>;
 }
 
 export interface IIdentityAttributes {

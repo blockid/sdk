@@ -81,6 +81,10 @@ export class IdentityContract extends Contract implements IIdentityContract {
    * @param args
    */
   public sendGasRelayedMethod(methodName: string, ...args: any[]): TContractSendResult {
+    if (!methodName.startsWith("gasRelayed")) {
+      return null;
+    }
+
     return this.send(methodName, ...args);
   }
 
@@ -90,6 +94,10 @@ export class IdentityContract extends Contract implements IIdentityContract {
    * @param args
    */
   public estimateGasRelayedMethod(methodName: string, ...args: any[]): TContractEstimateResult {
+    if (!methodName.startsWith("gasRelayed")) {
+      return null;
+    }
+
     return this.estimate(methodName, ...args);
   }
 
@@ -103,5 +111,14 @@ export class IdentityContract extends Contract implements IIdentityContract {
    */
   public addMember(nonce: BN.IBN, address: string, purpose: string, limit: BN.IBN, unlimited: boolean): Promise<string> {
     return this.send("addMember", nonce, address, purpose, limit, unlimited)();
+  }
+
+  /**
+   * removes member
+   * @param nonce
+   * @param address
+   */
+  public removeMember(nonce: BN.IBN, address: string): Promise<string> {
+    return this.send("removeMember", nonce, address)();
   }
 }

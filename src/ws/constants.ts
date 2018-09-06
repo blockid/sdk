@@ -15,6 +15,7 @@ export enum WsMessageTypes {
 
   // identity
   IdentityCreated = 0x21,
+  IdentityBalanceUpdated = 0x22,
 
   // identity member
   IdentityMemberAdded = 0x31,
