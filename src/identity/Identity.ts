@@ -3,7 +3,12 @@ import { IApi } from "../api";
 import { IDevice } from "../device";
 import { IEnsNode } from "../ens";
 import { INetwork } from "../network";
-import { AbstractAttributesHolder, UniqueBehaviorSubject, buildPersonalMessage } from "../shared";
+import {
+  AbstractAttributesHolder,
+  UniqueBehaviorSubject,
+  buildPersonalMessage,
+  TUniqueBehaviorSubject,
+} from "../shared";
 import { IdentityInteractionModes, IdentityStates } from "./constants";
 import { IdentityContract, IIdentityContract } from "./contracts";
 import { errIdentityInvalidState } from "./errors";
@@ -17,7 +22,7 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
   /**
    * balance subject
    */
-  public balance$ = new UniqueBehaviorSubject<BN.IBN>(null);
+  public balance$: TUniqueBehaviorSubject<BN.IBN>;
 
   /**
    * members subject
@@ -45,6 +50,7 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
       ensNode: true,
     });
 
+    this.balance$ = new UniqueBehaviorSubject<BN.IBN>(null);
     this.contract = new IdentityContract(network, device);
 
     this
