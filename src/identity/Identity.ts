@@ -56,7 +56,8 @@ export class Identity extends AbstractAttributesHolder<IIdentityAttributes> impl
    * balance getter
    */
   public get balance(): Promise<BN.IBN> {
-    return this.contract.balance;
+    const address = this.getAttribute("address");
+    return this.network.getBalance(address);
   }
 
   /**

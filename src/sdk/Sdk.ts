@@ -1,7 +1,7 @@
 import { IBN } from "bn.js";
 import { randomBytes } from "crypto";
 import { concat, from, Observable, of } from "rxjs";
-import { filter, map, switchMap, tap } from "rxjs/operators";
+import { delay, filter, map, switchMap, take, tap } from "rxjs/operators";
 import { Api, ApiStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
@@ -15,7 +15,7 @@ import {
   LinkerActionsTypes,
   LinkerTargetTypes,
 } from "../linker";
-import { INetwork, Network } from "../network";
+import { INetwork, Network, NetworkVersions } from "../network";
 import { IRegistry, Registry } from "../registry";
 import {
   ErrorSubject,
@@ -400,6 +400,7 @@ export class Sdk implements ISdk {
             this.storage.setDoc(SdkStorageKeys.Settings, settings),
           ));
       }
+
     });
   }
 
@@ -559,19 +560,29 @@ export class Sdk implements ISdk {
 
   protected setupIdentity(): void {
     this
-      .identity
-      .state$
+      .network
+      .version$
       .pipe(
-        switchMap((state) => {
-          let result: Observable<IBN> = of(null);
+        filter((version) => version && version !== NetworkVersions.Unknown),
+        take(1),
+        delay(100),
+        switchMap(() => {
+          return this
+            .identity
+            .state$
+            .pipe(
+              switchMap((state) => {
+                let result: Observable<IBN> = of(null);
+                switch (state) {
+                  case IdentityStates.Verified:
+                    result = from(this.error$.wrapTAsync(this.identity.balance));
+                    break;
+                }
 
-          switch (state) {
-            case IdentityStates.Verified:
-              result = from(this.error$.wrapTAsync(this.identity.balance));
-              break;
-          }
+                return result;
+              }),
+            );
 
-          return result;
         }),
       )
       .subscribe(this.identity.balance$);
