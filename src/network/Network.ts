@@ -124,7 +124,7 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
     const address: string = targetToAddress(target);
 
     if (address) {
-      result = await this.eth.getBalance(address, "latest");
+      result = await this.eth.getBalance(address, "pending");
     }
 
     return result;
