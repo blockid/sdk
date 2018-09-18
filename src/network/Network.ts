@@ -1,21 +1,20 @@
 /* tslint:disable:variable-name */
 
 import * as BN from "bn.js";
-import { ICallOptions, ISendTransactionOptions } from "ethjs";
-import { map } from "rxjs/operators";
 import * as Eth from "ethjs";
+import { ICallOptions, ISendTransactionOptions } from "ethjs";
+import { AttributesProxySubject } from "rxjs-addons";
 import {
   anyToBuffer,
   anyToHex,
   sha3,
-  UniqueBehaviorSubject,
-  AbstractAttributesHolder,
   targetToAddress,
-} from "../shared";
-import { NetworkVersions, NetworkStates, NETWORK_NAMES } from "./constants";
+} from "eth-utils";
+import { NETWORK_NAMES, NetworkStates, NetworkVersions } from "./constants";
 import {
   INetwork,
   INetworkAttributes,
+  INetworkOptions,
   INetworkBlock,
   INetworkMessageOptions,
   INetworkTransactionOptions,
@@ -26,65 +25,53 @@ import { NetworkProvider } from "./NetworkProvider";
 /**
  * Network
  */
-export class Network extends AbstractAttributesHolder<INetworkAttributes> implements INetwork {
-
-  /**
-   * name subject
-   */
-  public name$ = new UniqueBehaviorSubject<string>();
-
-  /**
-   * state subject
-   */
-  public state$ = new UniqueBehaviorSubject<NetworkStates>(NetworkStates.Unknown);
+export class Network extends AttributesProxySubject<INetworkAttributes> implements INetwork {
 
   private eth: Eth.IEth;
-
   private provider = new NetworkProvider();
 
   /**
    * Network
    * @param attributes
-   * @param customProvider
+   * @param options
    */
-  constructor(attributes: INetworkAttributes = null, customProvider: Eth.IProvider = null) {
-    super({
-      version: true,
-    }, attributes);
+  constructor(attributes: INetworkAttributes = {}, options: INetworkOptions = {}) {
+    super(attributes, {
+      schema: {
+        version: true,
+        name: true,
+        state: true,
+      },
+      prepare: (newValue, oldValue) => {
+        let result: INetworkAttributes = {
+          state: NetworkStates.Unknown,
+          version: NetworkVersions.Unknown,
+          name: NETWORK_NAMES.unknown,
+        };
 
-    this.eth = new Eth(customProvider || this.provider);
+        if (newValue) {
+          result = {
+            ...result,
+            ...(oldValue || {}),
+            ...newValue,
+          };
 
-    this.getAttribute$("version")
-      .pipe(
-        map((version) => NETWORK_NAMES[ version ] || null),
-      )
-      .subscribe(this.name$);
+          const version = parseInt(result.version, 10);
 
-    if (!customProvider) {
+          result.name = version >= 1000
+            ? NETWORK_NAMES.local
+            : NETWORK_NAMES[ result.version ] || NETWORK_NAMES.unknown;
+        }
+
+        return result;
+      },
+    });
+
+    this.eth = new Eth(options.customProvider || this.provider);
+
+    if (!options.customProvider) {
       this.getAttribute$("providerEndpoint").subscribe(this.provider.endpoint$);
     }
-  }
-
-  /**
-   * name getter
-   */
-  public get name(): string {
-    return this.name$.value;
-  }
-
-  /**
-   * state getter
-   */
-  public get state(): NetworkStates {
-    return this.state$.value;
-  }
-
-  /**
-   * state setter
-   * @param state
-   */
-  public set state(state: NetworkStates) {
-    this.state$.next(state);
   }
 
   /**
@@ -303,7 +290,7 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
     }
 
     return this.eth
-      .estimateGas(options, "latest");
+      .estimateGas(options);
   }
 
   /**
@@ -330,11 +317,5 @@ export class Network extends AbstractAttributesHolder<INetworkAttributes> implem
     return anyToBuffer(signature, {
       defaults: null,
     });
-  }
-
-  protected prepareAttributes(attributes: INetworkAttributes): INetworkAttributes {
-    return attributes ? attributes : {
-      version: NetworkVersions.Unknown,
-    };
   }
 }

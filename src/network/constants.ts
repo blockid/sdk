@@ -14,10 +14,10 @@ export enum NetworkStates {
 }
 
 export const NETWORK_NAMES = {
-  [ NetworkVersions.Unknown ]: "Unknown",
+  unknown: "Unknown",
+  local: "Local",
   [ NetworkVersions.MainNet ]: "MainNet",
   [ NetworkVersions.Ropsten ]: "Ropsten",
   [ NetworkVersions.Rinkeby ]: "Rinkeby",
   [ NetworkVersions.Kovan ]: "Kovan",
-  [ NetworkVersions.Local ]: "Local",
 };

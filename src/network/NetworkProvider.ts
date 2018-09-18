@@ -1,6 +1,6 @@
 import "cross-fetch/polyfill";
 
-import { UniqueBehaviorSubject } from "../shared";
+import { UniqueBehaviorSubject } from "rxjs-addons";
 import {
   errNetworkUnknownProvideEndpoint,
   errNetworkUnsupportedProviderMethod,

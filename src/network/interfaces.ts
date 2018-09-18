@@ -2,7 +2,7 @@
 
 import { IBN } from "bn.js";
 import { IProvider } from "ethjs";
-import { TUniqueBehaviorSubject, IAbstractAttributesHolder } from "../shared";
+import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
 import { NetworkStates, NetworkVersions } from "./constants";
 
 export interface INetworkProvider extends IProvider {
@@ -10,13 +10,13 @@ export interface INetworkProvider extends IProvider {
   endpoint: string;
 }
 
-export interface INetwork extends IAbstractAttributesHolder<INetworkAttributes> {
+export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
   version$?: TUniqueBehaviorSubject<NetworkVersions>;
   version?: NetworkVersions;
-  name$: TUniqueBehaviorSubject<string>;
-  name: string;
-  state$: TUniqueBehaviorSubject<NetworkStates>;
-  state: NetworkStates;
+  name$?: TUniqueBehaviorSubject<string>;
+  name?: string;
+  state$?: TUniqueBehaviorSubject<NetworkStates>;
+  state?: NetworkStates;
   detectVersion(): Promise<NetworkVersions>;
   getPrimaryAccount(): Promise<string>;
   getBalance(target: any): Promise<IBN>;
@@ -34,7 +34,13 @@ export interface INetwork extends IAbstractAttributesHolder<INetworkAttributes> 
 
 export interface INetworkAttributes {
   version?: NetworkVersions;
+  name?: string;
+  state?: NetworkStates;
   providerEndpoint?: string;
+}
+
+export interface INetworkOptions {
+  customProvider?: IProvider;
 }
 
 export interface INetworkMessageOptions {
