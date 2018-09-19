@@ -1,32 +1,15 @@
-import { IAbstractAttributesHolder, TUniqueBehaviorSubject } from "../shared";
+import { IAttributesProxySubject } from "rxjs-addons";
+import { IEnsNameInfo } from "eth-utils";
 
-export interface IEns extends IAbstractAttributesHolder<IEnsAttributes> {
-  supportedRootNodes$?: TUniqueBehaviorSubject<IEnsNode[]>;
-  supportedRootNodes?: IEnsNode[];
-  isRootNodeSupported(rootNode: Partial<IEnsNode>): boolean;
+export interface IEns extends IAttributesProxySubject<IEnsAttributes> {
   lookup(name: string): Promise<IEnsRecord>;
 }
 
 export interface IEnsAttributes {
   address: string;
   resolverAddress: string;
-  supportedRootNodes: IEnsNode[];
 }
 
-export interface IEnsNode {
-  name: string;
-  nameHash: string;
-}
-
-export interface IEnsInfo extends IEnsNode {
-  name: string;
-  nameHash: string;
-  label: string;
-  labelHash: string;
-  rootNode: IEnsNode;
-}
-
-export interface IEnsRecord extends IEnsInfo {
-  supported: boolean;
+export interface IEnsRecord extends IEnsNameInfo {
   address: string;
 }

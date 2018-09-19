@@ -3,27 +3,35 @@ import "cross-fetch/polyfill";
 import { Subject } from "rxjs";
 import { filter, map } from "rxjs/operators";
 import {
-  jsonReplacer,
-  jsonReviver,
   UniqueBehaviorSubject,
-} from "../shared";
-import {
-  decodeWsMessage,
-  encodeWsMessage,
-  IWsMessage,
-  WsMessagePayloads,
-  WsMessageTypes,
-} from "../ws";
-import { ApiConnection } from "./ApiConnection";
+  AttributesProxySubject,
+} from "rxjs-addons";
+import { jsonReplacer, jsonReviver } from "../json";
+import { ApiConnection, IApiConnection } from "./connection";
+import { IApiEvent, decodeApiEvent, encodeApiEvent } from "./events";
+import { ApiCalls } from "./calls";
 import { ApiStates } from "./constants";
 import { errApiInvalidState, errApiUnknownOptions } from "./errors";
-import { IApi, IApiOptions, IApiConnection, IApiRequest } from "./interfaces";
-import { ApiResponses } from "./namespaces";
+import { IApi, IApiOptions, IApiAttributes } from "./interfaces";
 
 /**
  * Api
  */
-export class Api implements IApi {
+export class Api extends AttributesProxySubject<IApiAttributes> implements IApi {
+  private static defaultAttributes: IApiAttributes = {
+    state: ApiStates.Disconnected,
+  };
+
+  private static buildEndpoint(protocol: "ws" | "http", options: IApiOptions = null): string {
+    let result: string = null;
+
+    if (options) {
+      const { host, port, ssl } = options;
+      result = `${protocol}${ssl ? "s" : ""}://${host || "localhost"}${port ? `:${port}` : ""}`;
+    }
+
+    return result;
+  }
 
   /**
    * options subject
@@ -36,9 +44,12 @@ export class Api implements IApi {
   public state$ = new UniqueBehaviorSubject<ApiStates>(ApiStates.Disconnected);
 
   /**
-   * ws message subject
+   * event subject
    */
-  public wsMessage$ = new Subject<IWsMessage>();
+  public event$ = new Subject<IApiEvent>();
+
+  private httpEndpoint: string = null;
+  private wsEndpoint: string = null;
 
   private reconnectInterval: any = null;
 
@@ -48,11 +59,20 @@ export class Api implements IApi {
    * @param connection
    */
   constructor(options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
+    super(Api.defaultAttributes, {
+      schema: {
+        state: true,
+      },
+    });
+
     this.options = options;
 
     this
       .options$
       .subscribe((options) => {
+        this.httpEndpoint = Api.buildEndpoint("http", options);
+        this.wsEndpoint = Api.buildEndpoint("ws", options);
+
         if (this.reconnectInterval) {
           clearInterval(this.reconnectInterval);
         }
@@ -64,7 +84,7 @@ export class Api implements IApi {
 
         const { reconnectTimeout } = options;
         const connect = () => {
-          this.connection.connect(this.getEndpoint("ws"));
+          this.connection.connect(this.wsEndpoint);
         };
 
         connect();
@@ -105,9 +125,9 @@ export class Api implements IApi {
 
     data$
       .pipe(
-        map(decodeWsMessage),
+        map(decodeApiEvent),
       )
-      .subscribe(this.wsMessage$);
+      .subscribe(this.event$);
   }
 
   /**
@@ -140,145 +160,23 @@ export class Api implements IApi {
     this.state$.next(state);
   }
 
-  // socket methods
-
-  /**
-   * verifies session
-   * @param signature;
-   */
-  public verifySession(signature: Buffer): void {
-    this.send<WsMessagePayloads.ISignedSession>({
-      type: WsMessageTypes.VerifySession,
-      payload: {
-        signature,
-      },
-    }, ApiStates.Connected);
-  }
-
-  /**
-   * mutes session
-   */
-  public muteSession(): void {
-    this.send({
-      type: WsMessageTypes.MuteSession,
-      payload: null,
-    }, ApiStates.Verified);
-  }
-
-  /**
-   * un mutes session
-   */
-  public unMuteSession(): void {
-    this.send({
-      type: WsMessageTypes.UnMuteSession,
-      payload: null,
-    }, ApiStates.Verified);
-  }
-
-  /**
-   * verifies personal message
-   * @param recipient
-   * @param signature
-   */
-  public verifyPersonalMessage(recipient: string, signature: Buffer): void {
-    this.send<WsMessagePayloads.ISignedPersonalMessage>({
-      type: WsMessageTypes.VerifyPersonalMessage,
-      payload: {
-        recipient,
-        signature,
-      },
-    }, ApiStates.Verified);
-  }
-
-  // http methods
-
-  /**
-   * GET /settings
-   */
-  public getSettings(): Promise<ApiResponses.ISettings> {
-    return this
-      .call({
-        path: "settings",
-      })
-      .catch(() => null);
-  }
-
-  /**
-   * GET /identity/:identity
-   * @para identity
-   */
-  public getIdentity(identity: string): Promise<ApiResponses.IIdentity> {
-    return this
-      .call({
-        path: `identity/${identity}`,
-      });
-  }
-
-  /**
-   * GET /identity/:identity/member
-   * @para identity
-   */
-  public getIdentityMembers(identity: string): Promise<ApiResponses.IIdentityMember[]> {
-    return this
-      .call({
-        path: `identity/${identity}/member`,
-      });
-  }
-
-  /**
-   * POST /identity/:identity/:method
-   * @para identity
-   * @para method
-   * @para data
-   */
-  public callIdentityMethod(identity: string, method: string, body: any): Promise<ApiResponses.IIdentityMethodCall> {
-    return this
-      .call({
-        path: `identity/${identity}/${method}`,
-        method: "POST",
-        body,
-      });
-  }
-
-  /**
-   * GET /identity/:identity/member/:member
-   * @para identityAddress
-   * @para memberAddress
-   */
-  public getIdentityMember(identity: string, member: string): Promise<ApiResponses.IIdentityMember> {
-    return this
-      .call({
-        path: `identity/${identity}/member/${member}`,
-      });
-  }
-
-  private getEndpoint(protocol: "ws" | "http"): string {
-    const { host, port, ssl } = this.options;
-    return `${protocol}${ssl ? "s" : ""}://${host || "localhost"}${port ? `:${port}` : ""}`;
-  }
-
-  private send<T = any>(message: IWsMessage<T>, requiredState = ApiStates.Verified): void {
+  private emit<T = any>(event: IApiEvent<T>, requiredState = ApiStates.Verified): void {
     if (this.state !== requiredState) {
       throw errApiInvalidState;
     }
 
-    const data = encodeWsMessage(message);
-    this.connection.send(data);
+    this.connection.send(encodeApiEvent(event));
   }
 
-  private async call<T = any>(req: IApiRequest): Promise<T> {
+  private async call<ReqD = any, ResD = any>(req: ApiCalls.IRequest<ReqD>): Promise<ApiCalls.IResponse<ResD>> {
     this.verifyOptions();
 
-    const endpoint = this.getEndpoint("http");
-
-    const { path, body } = req;
+    const { path, data } = req;
     let { method } = req;
 
     method = method || "GET";
 
-    let result: T = null;
-
-    const res = await fetch(`${endpoint}/${path}`, {
+    const res = await fetch(`${this.httpEndpoint}/${path}`, {
       method,
       headers: new Headers({
         "Content-Type": "application/json",
@@ -286,21 +184,25 @@ export class Api implements IApi {
       ...(
         method !== "GET" &&
         method !== "HEAD"
-          ? { body: JSON.stringify(body || {}, jsonReplacer) }
+          ? { body: JSON.stringify(data || {}, jsonReplacer) }
           : {}
       ),
     });
+
+    const result: ApiCalls.IResponse<ResD> = {
+      status: res.status,
+    };
 
     const text = await res.text();
 
     switch (res.status) {
       case 404:
-        result = null;
+        break;
+      case 400:
         break;
 
       case 200:
-      case 400:
-        result = JSON.parse(text, jsonReviver);
+        result.data = JSON.parse(text, jsonReviver);
         break;
 
       default:

@@ -1,14 +1,8 @@
 import { IBN } from "bn.js";
 import { INetworkTransactionOptions } from "../network";
-import { IAbstractAttributesHolder, TUniqueBehaviorSubject } from "../shared";
+import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
 
-export interface IDeviceAttributes {
-  address?: string;
-  publicKey?: Buffer;
-  privateKey?: Buffer;
-}
-
-export interface IDevice extends IAbstractAttributesHolder<IDeviceAttributes> {
+export interface IDevice extends IAttributesProxySubject<IDeviceAttributes> {
   address$?: TUniqueBehaviorSubject<string>;
   address?: string;
   publicKey?: Buffer;
@@ -16,4 +10,10 @@ export interface IDevice extends IAbstractAttributesHolder<IDeviceAttributes> {
   getTransactionCount(): Promise<IBN>;
   signPersonalMessage(message: Buffer | string): Promise<Buffer>;
   sendTransaction(options: INetworkTransactionOptions): Promise<string>;
+}
+
+export interface IDeviceAttributes {
+  address?: string;
+  publicKey?: Buffer;
+  privateKey?: Buffer;
 }

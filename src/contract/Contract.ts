@@ -9,15 +9,10 @@ import {
   encodeMethod,
   encodeSignature,
 } from "ethjs-abi";
+import { TUniqueBehaviorSubject, UniqueBehaviorSubject } from "rxjs-addons";
+import { anyToBuffer } from "eth-utils";
 import { IDevice } from "../device";
 import { INetwork, INetworkTransactionOptions } from "../network";
-import {
-  sha3,
-  TUniqueBehaviorSubject,
-  UniqueBehaviorSubject,
-  anyToHex,
-  anyToBuffer,
-} from "../shared";
 import { IContract } from "./interfaces";
 import { TContractSendResult, TContractEstimateResult } from "./types";
 import {
@@ -58,7 +53,6 @@ export class Contract implements IContract {
     address: string = null,
   ) {
     this.address$ = new UniqueBehaviorSubject<string>(address);
-
     this.logDecoder = logDecoder(abi);
 
     for (const abiItem of abi) {
@@ -152,11 +146,6 @@ export class Contract implements IContract {
     return result;
   }
 
-  /**
-   * call
-   * @param methodName
-   * @param args
-   */
   protected async call<T = IResult>(methodName: string, ...args: any[]): Promise<T> {
     this.verifyNetwork();
     this.verifyAddress();
@@ -170,11 +159,6 @@ export class Contract implements IContract {
     return this.decodeMethodOutput<T>(methodName, output);
   }
 
-  /**
-   * send
-   * @param methodName
-   * @param args
-   */
   protected send(methodName: string, ...args: any[]): TContractSendResult {
     this.verifyNetwork();
     this.verifyDevice();
@@ -189,11 +173,6 @@ export class Contract implements IContract {
     });
   }
 
-  /**
-   * estimate
-   * @param methodName
-   * @param args
-   */
   protected estimate(methodName: string, ...args: any[]): TContractEstimateResult {
     this.verifyNetwork();
     this.verifyAddress();
@@ -207,9 +186,6 @@ export class Contract implements IContract {
     });
   }
 
-  /**
-   * verifies address
-   */
   protected verifyAddress(): void {
     if (!this.address) {
       throw errContractUnknownAddress;

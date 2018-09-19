@@ -1,16 +1,16 @@
-import { INetwork } from "../network";
-import { AbstractAttributesHolder } from "../shared";
-import { IEns, IEnsAttributes, IEnsRecord, IEnsNode } from "./interfaces";
+import { AttributesProxySubject } from "rxjs-addons";
 import {
   getEnsNameHash,
   getEnsNameInfo,
-} from "./utils";
+} from "eth-utils";
+import { INetwork } from "../network";
+import { IEns, IEnsAttributes, IEnsRecord } from "./interfaces";
 import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } from "./contracts";
 
 /**
  * Ens
  */
-export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEns {
+export class Ens extends AttributesProxySubject<IEnsAttributes> implements IEns {
 
   private readonly contract: IEnsContract;
 
@@ -22,27 +22,15 @@ export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEn
    * @param attributes
    */
   constructor(private network: INetwork, attributes: IEnsAttributes = null) {
-    super({
-      supportedRootNodes: true,
-    }, attributes);
+    super(attributes, {
+      schema: {},
+    });
 
     this.contract = new EnsContract(network);
     this.resolverContract = new EnsResolverContract(network);
 
     this.getAttribute$("address").subscribe(this.contract.address$);
     this.getAttribute$("resolverAddress").subscribe(this.resolverContract.address$);
-  }
-
-  /**
-   * checks if root node is supported
-   * @param rootNode
-   */
-  public isRootNodeSupported(rootNode: Partial<IEnsNode>): boolean {
-    const { supportedRootNodes } = this.attributes;
-    return rootNode && supportedRootNodes.some(({ name, nameHash }) => (
-      name === rootNode.name ||
-      nameHash === rootNode.nameHash
-    ));
   }
 
   /**
@@ -55,39 +43,20 @@ export class Ens extends AbstractAttributesHolder<IEnsAttributes> implements IEn
     const info = getEnsNameInfo(name);
 
     if (info) {
+      result = {
+        address: null,
+        ...info,
+      };
 
-      const supported = this.isRootNodeSupported(info.rootNode);
       const nameHash = getEnsNameHash(name);
+      const address = await this.contract.getResolverAddress(nameHash);
 
-      let resolverContract: IEnsResolverContract = null;
-
-      if (supported) {
-        resolverContract = this.resolverContract;
-      } else {
-        const address = await this.contract.getResolverAddress(nameHash);
-
-        if (address) {
-          resolverContract = this.resolverContract.at(address);
-        }
-      }
-
-      if (resolverContract) {
-        result = {
-          supported,
-          address: await resolverContract.resolveAddress(nameHash),
-          ...info,
-        };
+      if (address) {
+        const resolverContract = this.resolverContract.at(address);
+        result.address = await resolverContract.resolveAddress(nameHash);
       }
     }
 
     return result;
-  }
-
-  protected prepareAttributes(attributes: IEnsAttributes): IEnsAttributes {
-    return attributes ? attributes : {
-      address: null,
-      resolverAddress: null,
-      supportedRootNodes: [],
-    };
   }
 }

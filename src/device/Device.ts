@@ -1,13 +1,13 @@
 import { IBN } from "bn.js";
 import * as EthereumTx from "ethereumjs-tx";
 import { privateKeyVerify, publicKeyVerify, publicKeyCreate } from "secp256k1";
+import { AttributesProxySubject } from "rxjs-addons";
 import {
-  AbstractAttributesHolder,
   signPersonalMessage,
   publicKeyToAddress,
   prepareAddress,
   anyToHex,
-} from "../shared";
+} from "eth-utils";
 import { INetwork, INetworkTransactionOptions } from "../network";
 import { IDevice, IDeviceAttributes } from "./interfaces";
 import { errDeviceUnknownAddress } from "./errors";
@@ -15,7 +15,44 @@ import { errDeviceUnknownAddress } from "./errors";
 /**
  * Device
  */
-export class Device extends AbstractAttributesHolder<IDeviceAttributes> implements IDevice {
+export class Device extends AttributesProxySubject<IDeviceAttributes> implements IDevice {
+
+  private static prepareAttributes(attributes: IDeviceAttributes): IDeviceAttributes {
+    let result: IDeviceAttributes = null;
+    if (attributes) {
+      let { privateKey, publicKey, address } = attributes;
+
+      if (
+        privateKey &&
+        privateKeyVerify(privateKey)
+      ) {
+        publicKey = publicKeyCreate(privateKey, false);
+      } else {
+        privateKey = null;
+      }
+
+      if (
+        publicKey &&
+        publicKeyVerify(publicKey)
+      ) {
+        address = publicKeyToAddress(publicKey);
+      } else {
+        publicKey = null;
+      }
+
+      if (address) {
+        address = prepareAddress(address);
+      }
+
+      result = {
+        address,
+        publicKey,
+        privateKey,
+      };
+    }
+
+    return result;
+  }
 
   /**
    * constructor
@@ -23,12 +60,15 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
    * @param attributes
    */
   constructor(private network: INetwork, attributes: IDeviceAttributes = null) {
-    super({
-      address: true,
-      publicKey: {
-        getter: true,
+    super(attributes, {
+      schema: {
+        address: true,
+        publicKey: {
+          getter: true,
+        },
       },
-    }, attributes);
+      prepare: Device.prepareAttributes,
+    });
   }
 
   /**
@@ -113,43 +153,6 @@ export class Device extends AbstractAttributesHolder<IDeviceAttributes> implemen
         nonce,
         from: address,
       });
-    }
-
-    return result;
-  }
-
-  protected prepareAttributes(attributes: IDeviceAttributes): IDeviceAttributes {
-    let result: IDeviceAttributes = null;
-    if (attributes) {
-      let { privateKey, publicKey, address } = attributes;
-
-      if (
-        privateKey &&
-        privateKeyVerify(privateKey)
-      ) {
-        publicKey = publicKeyCreate(privateKey, false);
-      } else {
-        privateKey = null;
-      }
-
-      if (
-        publicKey &&
-        publicKeyVerify(publicKey)
-      ) {
-        address = publicKeyToAddress(publicKey);
-      } else {
-        publicKey = null;
-      }
-
-      if (address) {
-        address = prepareAddress(address);
-      }
-
-      result = {
-        address,
-        publicKey,
-        privateKey,
-      };
     }
 
     return result;

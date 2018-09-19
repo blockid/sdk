@@ -1,6 +1,6 @@
 export enum ContractTypes {
   Ens = "ENS",
   EnsResolver = "ENS_RESOLVER",
-  Identity = "IDENTITY",
   Registry = "REGISTRY",
+  SharedAccount = "SHARED_ACCOUNT",
 }

@@ -1,4 +1,4 @@
-import { isEqual } from "../shared";
+import { deepEqual } from "deep-equal-extended";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 import { ILinkerAction } from "./interfaces";
 import { Linker } from "./Linker";
@@ -26,7 +26,7 @@ describe("linker", () => {
 
         linker.incomingUrl$.next(url);
 
-        expect(isEqual(action, {
+        expect(deepEqual(action, {
           ...linker.incomingAction$.value,
           to: null,
         })).toBeTruthy();

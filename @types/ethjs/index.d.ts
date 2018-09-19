@@ -24,7 +24,7 @@ declare module "ethjs" {
       call(options: ICallOptions, block: TBlockParam): Promise<string>;
       sendRawTransaction(data: string): Promise<string>;
       sendTransaction(options: ISendTransactionOptions): Promise<string>;
-      estimateGas(options: Partial<ISendTransactionOptions>, block: TBlockParam): Promise<IBN>;
+      estimateGas(options: Partial<ISendTransactionOptions>): Promise<IBN>;
     }
 
     export interface IProvider {

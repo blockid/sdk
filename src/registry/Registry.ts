@@ -1,4 +1,4 @@
-import { AbstractAttributesHolder } from "../shared";
+import { AttributesProxySubject } from "rxjs-addons";
 import { INetwork } from "../network";
 import { IDevice } from "../device";
 import { IRegistry, IRegistryAttributes } from "./interfaces";
@@ -7,7 +7,15 @@ import { IRegistryContact, RegistryContact } from "./contracts";
 /**
  * Registry
  */
-export class Registry extends AbstractAttributesHolder<IRegistryAttributes> implements IRegistry {
+export class Registry extends AttributesProxySubject<IRegistryAttributes> implements IRegistry {
+
+  private static prepareAttributes(attributes: IRegistryAttributes): IRegistryAttributes {
+    return {
+      address: null,
+      supportedEnsRootNodesNames: [],
+      ...(attributes || {}),
+    };
+  }
 
   private contract: IRegistryContact;
 
@@ -22,21 +30,17 @@ export class Registry extends AbstractAttributesHolder<IRegistryAttributes> impl
     device: IDevice,
     attributes: IRegistryAttributes = null,
   ) {
-    super({}, attributes);
+    super(attributes, {
+      schema: {
+        supportedEnsRootNodesNames: true,
+      },
+      prepare: Registry.prepareAttributes,
+    });
 
     this.contract = new RegistryContact(network, device);
 
     this
       .getAttribute$("address")
       .subscribe(this.contract.address$);
-  }
-
-  /**
-   * creates self identity
-   * @param labelHash
-   * @param rootNodeNameHash
-   */
-  public createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string> {
-    return this.contract.createSelfIdentity(labelHash, rootNodeNameHash);
   }
 }

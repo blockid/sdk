@@ -1,4 +1,4 @@
-import { prepareAddress } from "../../shared";
+import { prepareAddress } from "eth-utils";
 import { Contract } from "../../contract";
 import { INetwork } from "../../network";
 import { IEnsResolverContract } from "./interfaces";

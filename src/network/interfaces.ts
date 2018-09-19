@@ -5,11 +5,6 @@ import { IProvider } from "ethjs";
 import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
 import { NetworkStates, NetworkVersions } from "./constants";
 
-export interface INetworkProvider extends IProvider {
-  endpoint$: TUniqueBehaviorSubject<string>;
-  endpoint: string;
-}
-
 export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
   version$?: TUniqueBehaviorSubject<NetworkVersions>;
   version?: NetworkVersions;

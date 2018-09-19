@@ -1,5 +1,5 @@
 import { ILog, IResult } from "ethjs-abi";
-import { TUniqueBehaviorSubject } from "../shared";
+import { TUniqueBehaviorSubject } from "rxjs-addons";
 
 export interface IContract {
   address$: TUniqueBehaviorSubject<string>;

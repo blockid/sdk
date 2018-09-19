@@ -1,13 +1,8 @@
-import { IBN } from "bn.js";
-
 export namespace RegistryContactEvents {
-
   export enum Types {
     EnsRootNodeAdded = "EnsRootNodeAdded",
     EnsRootNodeRemoved = "EnsRootNodeRemoved",
-    IdentityCreated = "IdentityCreated",
-    IdentityClaimAdded = "IdentityClaimAdded",
-    IdentityClaimRemoved = "IdentityClaimRemoved",
+    SharedAccountCreated = "SharedAccountCreated",
   }
 
   export interface IEnsRootNodeAdded {
@@ -18,25 +13,10 @@ export namespace RegistryContactEvents {
     ensRootNode: string;
   }
 
-  export interface IIdentityCreated {
-    identity: string;
-    member: string;
+  export interface ISharedAccountCreated {
+    sharedAccount: string;
     ensLabel: string;
     ensRootNode: string;
-  }
-
-  export interface IIdentityClaimAdded {
-    identity: string;
-    nonce: IBN;
-    issuer: string;
-    topic: IBN;
-    data: string;
-    signature: string;
-  }
-
-  export interface IIdentityClaimRemoved {
-    identity: string;
-    issuer: string;
-    topic: IBN;
+    member: string;
   }
 }

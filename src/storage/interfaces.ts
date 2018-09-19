@@ -1,4 +1,4 @@
-import { IErrorSubject } from "../shared";
+import { IErrorSubject } from "rxjs-addons";
 
 export interface IStorage {
   error$: IErrorSubject;

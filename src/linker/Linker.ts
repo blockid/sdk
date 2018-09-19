@@ -1,6 +1,7 @@
 import { parse, stringify } from "querystring";
 import { filter, map } from "rxjs/operators";
-import { jsonReplacer, jsonReviver, UniqueBehaviorSubject } from "../shared";
+import { UniqueBehaviorSubject } from "rxjs-addons";
+import { jsonReplacer, jsonReviver } from "../json";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 import { ILinker, ILinkerAction, ILinkerApp, ILinkerOptions, ILinkerTarget } from "./interfaces";
 
@@ -14,7 +15,7 @@ const UNKNOWN_APP: ILinkerApp = {
  */
 export class Linker implements ILinker {
 
-  private static parseUrl(url: string): ILinkerAction {
+  private static decodeActionUrl(url: string): ILinkerAction {
     let result: ILinkerAction;
 
     try {
@@ -92,7 +93,7 @@ export class Linker implements ILinker {
       .incomingUrl$
       .pipe(
         filter((url) => !!url),
-        map(Linker.parseUrl),
+        map(Linker.decodeActionUrl),
       )
       .subscribe(this.incomingAction$);
   }

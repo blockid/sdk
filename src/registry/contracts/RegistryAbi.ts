@@ -2,266 +2,133 @@
 
 export default [
   {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "_identity",
-        "type": "address",
-      },
-      {
-        "name": "_issuer",
-        "type": "address",
-      },
-      {
-        "name": "_topic",
-        "type": "uint256",
-      },
-    ],
-    "name": "identityClaimExists",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-      },
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function",
-  },
-  {
     "constant": false,
     "inputs": [
       {
         "name": "_ensRootNode",
-        "type": "bytes32",
-      },
+        "type": "bytes32"
+      }
     ],
     "name": "addEnsRootNode",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function",
+    "type": "function"
   },
   {
     "constant": false,
     "inputs": [
       {
         "name": "_ensRootNode",
-        "type": "bytes32",
-      },
+        "type": "bytes32"
+      }
     ],
     "name": "removeEnsRootNode",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function",
+    "type": "function"
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "_identity",
-        "type": "address",
-      },
-    ],
-    "name": "identityExists",
+    "inputs": [],
+    "name": "guardian",
     "outputs": [
       {
         "name": "",
-        "type": "bool",
-      },
+        "type": "address"
+      }
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function",
+    "type": "function"
   },
   {
-    "constant": false,
+    "constant": true,
     "inputs": [
       {
-        "name": "_issuer",
-        "type": "address",
-      },
-      {
-        "name": "_topic",
-        "type": "uint256",
-      },
+        "name": "_sharedAccount",
+        "type": "address"
+      }
     ],
-    "name": "removeIdentityClaim",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function",
-  },
-  {
-    "constant": false,
-    "inputs": [
+    "name": "sharedAccountExists",
+    "outputs": [
       {
-        "name": "_ensLabel",
-        "type": "bytes32",
-      },
-      {
-        "name": "_ensRootNode",
-        "type": "bytes32",
-      },
-      {
-        "name": "_messageSignature",
-        "type": "bytes",
-      },
+        "name": "",
+        "type": "bool"
+      }
     ],
-    "name": "createIdentity",
-    "outputs": [],
     "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function",
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_ensLabel",
-        "type": "bytes32",
-      },
-      {
-        "name": "_ensRootNode",
-        "type": "bytes32",
-      },
-    ],
-    "name": "createSelfIdentity",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function",
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "constant": true,
     "inputs": [
       {
         "name": "_ensRootNode",
-        "type": "bytes32",
-      },
+        "type": "bytes32"
+      }
     ],
     "name": "ensRootNodeExists",
     "outputs": [
       {
         "name": "",
-        "type": "bool",
-      },
+        "type": "bool"
+      }
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function",
+    "type": "function"
   },
   {
     "constant": false,
     "inputs": [
       {
-        "name": "_nonce",
-        "type": "uint256",
+        "name": "_salt",
+        "type": "uint256"
       },
       {
-        "name": "_issuer",
-        "type": "address",
+        "name": "_ensLabel",
+        "type": "bytes32"
       },
       {
-        "name": "_topic",
-        "type": "uint256",
+        "name": "_ensRootNode",
+        "type": "bytes32"
       },
       {
-        "name": "_data",
-        "type": "bytes",
+        "name": "_memberMessageSignature",
+        "type": "bytes"
       },
       {
-        "name": "_signature",
-        "type": "bytes",
-      },
+        "name": "_guardianMessageSignature",
+        "type": "bytes"
+      }
     ],
-    "name": "addIdentityClaim",
+    "name": "createSharedAccount",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function",
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "_identity",
-        "type": "address",
-      },
-    ],
-    "name": "getIdentityClaimNonce",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-      },
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function",
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "_identity",
-        "type": "address",
-      },
-      {
-        "name": "_issuer",
-        "type": "address",
-      },
-      {
-        "name": "_topic",
-        "type": "uint256",
-      },
-    ],
-    "name": "getIdentityClaim",
-    "outputs": [
-      {
-        "name": "nonce",
-        "type": "uint256",
-      },
-      {
-        "name": "issuer",
-        "type": "address",
-      },
-      {
-        "name": "topic",
-        "type": "uint256",
-      },
-      {
-        "name": "data",
-        "type": "bytes",
-      },
-      {
-        "name": "signature",
-        "type": "bytes",
-      },
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function",
+    "type": "function"
   },
   {
     "inputs": [
+      {
+        "name": "_guardian",
+        "type": "address"
+      },
       {
         "name": "_ens",
-        "type": "address",
+        "type": "address"
       },
       {
         "name": "_ensResolver",
-        "type": "address",
-      },
-      {
-        "name": "_identityBase",
-        "type": "address",
-      },
+        "type": "address"
+      }
     ],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "constructor",
+    "type": "constructor"
   },
   {
     "anonymous": false,
@@ -269,11 +136,11 @@ export default [
       {
         "indexed": false,
         "name": "ensRootNode",
-        "type": "bytes32",
-      },
+        "type": "bytes32"
+      }
     ],
     "name": "EnsRootNodeAdded",
-    "type": "event",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -281,96 +148,37 @@ export default [
       {
         "indexed": false,
         "name": "ensRootNode",
-        "type": "bytes32",
-      },
+        "type": "bytes32"
+      }
     ],
     "name": "EnsRootNodeRemoved",
-    "type": "event",
+    "type": "event"
   },
   {
     "anonymous": false,
     "inputs": [
       {
         "indexed": false,
-        "name": "identity",
-        "type": "address",
-      },
-      {
-        "indexed": false,
-        "name": "member",
-        "type": "address",
+        "name": "sharedAccount",
+        "type": "address"
       },
       {
         "indexed": false,
         "name": "ensLabel",
-        "type": "bytes32",
+        "type": "bytes32"
       },
       {
         "indexed": false,
         "name": "ensRootNode",
-        "type": "bytes32",
+        "type": "bytes32"
       },
+      {
+        "indexed": false,
+        "name": "member",
+        "type": "address"
+      }
     ],
-    "name": "IdentityCreated",
-    "type": "event",
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "name": "identity",
-        "type": "address",
-      },
-      {
-        "indexed": false,
-        "name": "nonce",
-        "type": "uint256",
-      },
-      {
-        "indexed": false,
-        "name": "issuer",
-        "type": "address",
-      },
-      {
-        "indexed": false,
-        "name": "topic",
-        "type": "uint256",
-      },
-      {
-        "indexed": false,
-        "name": "data",
-        "type": "bytes",
-      },
-      {
-        "indexed": false,
-        "name": "signature",
-        "type": "bytes",
-      },
-    ],
-    "name": "IdentityClaimAdded",
-    "type": "event",
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "name": "identity",
-        "type": "address",
-      },
-      {
-        "indexed": false,
-        "name": "issuer",
-        "type": "address",
-      },
-      {
-        "indexed": false,
-        "name": "topic",
-        "type": "uint256",
-      },
-    ],
-    "name": "IdentityClaimRemoved",
-    "type": "event",
-  },
+    "name": "SharedAccountCreated",
+    "type": "event"
+  }
 ];

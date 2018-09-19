@@ -1,4 +1,4 @@
-import { TUniqueBehaviorSubject } from "../shared";
+import { TUniqueBehaviorSubject } from "rxjs-addons";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 
 export interface ILinker {

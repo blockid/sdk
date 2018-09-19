@@ -20,11 +20,30 @@ export class RegistryContact extends Contract implements IRegistryContact {
   }
 
   /**
-   * at
-   * @param labelHash
-   * @param rootNodeNameHash
+   * shared account exists
+   * @param sharedAccount
    */
-  public createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string> {
-    return this.send("createSelfIdentity", labelHash, rootNodeNameHash)();
+  public async sharedAccountExists(sharedAccount: string): Promise<boolean> {
+    const result = await this.call("sharedAccountExists", sharedAccount);
+
+    return !!result[ "0" ];
+  }
+
+  /**
+   * creates shared account
+   * @param salt
+   * @param ensLabel
+   * @param ensRootNode
+   * @param memberMessageSignature
+   * @param guardianMessageSignature
+   */
+  public createSharedAccount(
+    salt: number,
+    ensLabel: string,
+    ensRootNode: string,
+    memberMessageSignature: string,
+    guardianMessageSignature: string,
+  ): Promise<string> {
+    return this.send("createSharedAccount", salt, ensLabel, ensRootNode, memberMessageSignature, guardianMessageSignature)();
   }
 }

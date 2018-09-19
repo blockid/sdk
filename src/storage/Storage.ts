@@ -1,6 +1,7 @@
 import { Subject, from } from "rxjs";
 import { mergeMap } from "rxjs/operators";
-import { jsonReviver, jsonReplacer, ErrorSubject } from "../shared";
+import { ErrorSubject } from "rxjs-addons";
+import { jsonReviver, jsonReplacer } from "../json";
 import { STORAGE_KEY_SEPARATOR } from "./constants";
 import { errStorageUnknownAdapter } from "./errors";
 import { IStorage, IStorageOptions } from "./interfaces";

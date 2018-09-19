@@ -1,5 +1,15 @@
 import { IContract } from "../../contract";
 
 export interface IRegistryContact extends IContract {
-  createSelfIdentity(labelHash: string, rootNodeNameHash: string): Promise<string>;
+  sharedAccountExists(
+    sharedAccount: string,
+  ): Promise<boolean>;
+
+  createSharedAccount(
+    salt: number,
+    ensLabel: string,
+    ensRootNode: string,
+    memberMessageSignature: string,
+    guardianMessageSignature: string,
+  ): Promise<string>;
 }
