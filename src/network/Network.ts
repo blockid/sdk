@@ -38,7 +38,7 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
         ...attributes,
       };
 
-      const type = this.versionToType(result.version);
+      const type = Network.versionToType(result.version);
 
       result = {
         ...attributes,
@@ -106,8 +106,13 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
   }
 
   public async detectType(): Promise<NetworkTypes> {
-    const version = parseInt(await this.eth.net_version().catch(() => "0"), 10);
-    return Network.versionToType(version);
+    return Network.versionToType(
+      await this.detectVersion(),
+    );
+  }
+
+  public async detectVersion(): Promise<number> {
+    return parseInt(await this.eth.net_version().catch(() => "0"), 10);
   }
 
   /**

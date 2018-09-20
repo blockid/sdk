@@ -15,6 +15,7 @@ export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
   state$?: TUniqueBehaviorSubject<NetworkStates>;
   state?: NetworkStates;
   detectType(): Promise<NetworkTypes>;
+  detectVersion(): Promise<number>;
   getPrimaryAccount(): Promise<string>;
   getBalance(target: any): Promise<IBN>;
   getTransactionCount(target: any): Promise<IBN>;
