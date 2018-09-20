@@ -21,23 +21,21 @@ export class Registry extends AttributesProxySubject<IRegistryAttributes> implem
 
   /**
    * constructor
-   * @param network
    * @param device
-   * @param attributes
+   * @param network
    */
   constructor(
-    network: INetwork,
     device: IDevice,
-    attributes: IRegistryAttributes = null,
+    network: INetwork,
   ) {
-    super(attributes, {
+    super(null, {
       schema: {
         supportedEnsRootNodesNames: true,
       },
       prepare: Registry.prepareAttributes,
     });
 
-    this.contract = new RegistryContact(network, device);
+    this.contract = new RegistryContact(device, network);
 
     this
       .getAttribute$("address")

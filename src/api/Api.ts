@@ -1,26 +1,35 @@
 import "cross-fetch/polyfill";
 
 import { Subject } from "rxjs";
-import { filter, map } from "rxjs/operators";
-import {
-  UniqueBehaviorSubject,
-  AttributesProxySubject,
-} from "rxjs-addons";
+import { AttributesProxySubject, UniqueBehaviorSubject } from "rxjs-addons";
+import { map } from "rxjs/operators";
 import { jsonReplacer, jsonReviver } from "../json";
-import { ApiConnection, IApiConnection } from "./connection";
-import { IApiEvent, decodeApiEvent, encodeApiEvent } from "./events";
 import { ApiCalls } from "./calls";
+import { ApiConnection, IApiConnection } from "./connection";
 import { ApiStates } from "./constants";
-import { errApiInvalidState, errApiUnknownOptions } from "./errors";
-import { IApi, IApiOptions, IApiAttributes } from "./interfaces";
+import { errApiUnknownOptions } from "./errors";
+import { ApiEvents, decodeApiEvent, encodeApiEvent, IApiEvent } from "./events";
+import { IApi, IApiAttributes, IApiOptions } from "./interfaces";
 
 /**
  * Api
  */
 export class Api extends AttributesProxySubject<IApiAttributes> implements IApi {
-  private static defaultAttributes: IApiAttributes = {
-    state: ApiStates.Disconnected,
-  };
+
+  private static prepareAttributes(attributes: IApiAttributes): IApiAttributes {
+    let result: IApiAttributes = {
+      state: ApiStates.Disconnected,
+    };
+
+    if (attributes) {
+      result = {
+        ...result,
+        ...attributes,
+      };
+    }
+
+    return result;
+  }
 
   private static buildEndpoint(protocol: "ws" | "http", options: IApiOptions = null): string {
     let result: string = null;
@@ -39,11 +48,6 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
   public options$ = new UniqueBehaviorSubject<IApiOptions>();
 
   /**
-   * sate subject
-   */
-  public state$ = new UniqueBehaviorSubject<ApiStates>(ApiStates.Disconnected);
-
-  /**
    * event subject
    */
   public event$ = new Subject<IApiEvent>();
@@ -59,10 +63,11 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
    * @param connection
    */
   constructor(options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
-    super(Api.defaultAttributes, {
+    super(null, {
       schema: {
         state: true,
       },
+      prepare: Api.prepareAttributes,
     });
 
     this.options = options;
@@ -92,7 +97,7 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
         if (reconnectTimeout) {
           this.reconnectInterval = setInterval(
             () => {
-              switch (this.state) {
+              switch (this.getAttribute("state")) {
                 case ApiStates.Disconnected:
                   connect();
                   break;
@@ -113,15 +118,19 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
             case null:
               result = ApiStates.Connecting;
               break;
+
+            case true:
+              result = ApiStates.Connected;
+              break;
+
             case false:
               result = ApiStates.Disconnected;
               break;
           }
           return result;
         }),
-        filter((value) => !!value),
       )
-      .subscribe(this.state$);
+      .subscribe(this.getAttribute$("state"));
 
     data$
       .pipe(
@@ -146,35 +155,50 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
   }
 
   /**
-   * state getter
+   * sends verify session
+   * @param payload
    */
-  public get state(): ApiStates {
-    return this.state$.value;
+  public sendVerifySession(payload: ApiEvents.Payloads.ISignedSession): void {
+    this.send({
+      type: ApiEvents.Types.VerifySession,
+      payload,
+    });
   }
 
   /**
-   * state setter
-   * @param state
+   * sends mute session
    */
-  public set state(state: ApiStates) {
-    this.state$.next(state);
+  public sendMuteSession(): void {
+    this.send({
+      type: ApiEvents.Types.MuteSession,
+    });
   }
 
-  private emit<T = any>(event: IApiEvent<T>, requiredState = ApiStates.Verified): void {
-    if (this.state !== requiredState) {
-      throw errApiInvalidState;
-    }
-
-    this.connection.send(encodeApiEvent(event));
+  /**
+   * sends un mute session
+   */
+  public sendUnMuteSession(): void {
+    this.send({
+      type: ApiEvents.Types.UnMuteSession,
+    });
   }
 
-  private async call<ReqD = any, ResD = any>(req: ApiCalls.IRequest<ReqD>): Promise<ApiCalls.IResponse<ResD>> {
+  /**
+   * calls GET /settings
+   */
+  public async callGetSettings<T = any>(): Promise<T> {
+    const { data } = await this.call<any, T>({
+      method: "GET",
+      path: "settings",
+    });
+
+    return data || null;
+  }
+
+  private async call<B = any, D = any>(req: ApiCalls.IRequest<B>): Promise<ApiCalls.IResponse<D>> {
     this.verifyOptions();
 
-    const { path, data } = req;
-    let { method } = req;
-
-    method = method || "GET";
+    const { method, path, data } = req;
 
     const res = await fetch(`${this.httpEndpoint}/${path}`, {
       method,
@@ -189,15 +213,11 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
       ),
     });
 
-    const result: ApiCalls.IResponse<ResD> = {
-      status: res.status,
-    };
+    const result: ApiCalls.IResponse<D> = {};
 
     const text = await res.text();
 
     switch (res.status) {
-      case 404:
-        break;
       case 400:
         break;
 
@@ -206,10 +226,16 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
         break;
 
       default:
-        throw new Error(text);
+        result.error = text as any;
     }
 
     return result;
+  }
+
+  private send<T = any>(event: IApiEvent<T>): void {
+    this.verifyOptions();
+
+    this.connection.send(encodeApiEvent(event));
   }
 
   private verifyOptions(): void {

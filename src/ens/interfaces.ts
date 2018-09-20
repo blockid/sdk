@@ -2,7 +2,7 @@ import { IAttributesProxySubject } from "rxjs-addons";
 import { IEnsNameInfo } from "eth-utils";
 
 export interface IEns extends IAttributesProxySubject<IEnsAttributes> {
-  lookup(name: string): Promise<IEnsRecord>;
+  lookup(name: string, useOwnResolver?: boolean): Promise<IEnsRecord>;
 }
 
 export interface IEnsAttributes {

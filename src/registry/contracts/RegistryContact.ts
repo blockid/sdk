@@ -11,12 +11,12 @@ export class RegistryContact extends Contract implements IRegistryContact {
 
   /**
    * constructor
-   * @param network
    * @param device
+   * @param network
    * @param address
    */
-  constructor(network: INetwork = null, device: IDevice = null, address: string = null) {
-    super(abi, network, device, address);
+  constructor(device: IDevice = null, network: INetwork = null, address: string = null) {
+    super(abi, device, network, address);
   }
 
   /**

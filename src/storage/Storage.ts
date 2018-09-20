@@ -23,23 +23,25 @@ export class Storage implements IStorage {
    * constructor
    * @param options
    */
-  constructor(private options: IStorageOptions) {
-    this
-      .cacheWriteKey$
-      .pipe(
-        mergeMap((key) => from(this
-          .error$
-          .wrapTAsync(async () => {
-            const item = this.cacheData.get(key) || null;
-            if (item) {
-              await options.adapter.setItem(key, item);
-            } else {
-              await options.adapter.removeItem(key);
-            }
-          })),
-        ),
-      )
-      .subscribe();
+  constructor(private options: IStorageOptions = null) {
+    if (this.options) {
+      this
+        .cacheWriteKey$
+        .pipe(
+          mergeMap((key) => from(this
+            .error$
+            .wrapTAsync(async () => {
+              const item = this.cacheData.get(key) || null;
+              if (item) {
+                await options.adapter.setItem(key, item);
+              } else {
+                await options.adapter.removeItem(key);
+              }
+            })),
+          ),
+        )
+        .subscribe();
+    }
   }
 
   /**
@@ -47,27 +49,29 @@ export class Storage implements IStorage {
    * @param key
    */
   public async getDoc<T = any>(key: string): Promise<T> {
-    this.verifyAdapter();
-
     let result: any = null;
 
-    key = this.prepareKey(key);
+    if (this.options) {
+      this.verifyAdapter();
 
-    let item: string = null;
+      key = this.prepareKey(key);
 
-    try {
-      item = (await this.options.adapter.getItem(key)) || null;
-      if (item) {
-        result = JSON.parse(item, jsonReviver) || null;
+      let item: string = null;
+
+      try {
+        item = (await this.options.adapter.getItem(key)) || null;
+        if (item) {
+          result = JSON.parse(item, jsonReviver) || null;
+        }
+      } catch (err) {
+        this.error$.next(err);
+
+        result = null;
+        item = null;
       }
-    } catch (err) {
-      this.error$.next(err);
 
-      result = null;
-      item = null;
+      this.cacheData.set(key, item);
     }
-
-    this.cacheData.set(key, item);
 
     return result;
   }
@@ -78,19 +82,21 @@ export class Storage implements IStorage {
    * @param doc
    */
   public setDoc<T = any>(key: string, doc: T = null): void {
-    this.verifyAdapter();
+    if (this.options) {
+      this.verifyAdapter();
 
-    key = this.prepareKey(key);
+      key = this.prepareKey(key);
 
-    let item: string = null;
+      let item: string = null;
 
-    if (doc) {
-      item = JSON.stringify(doc, jsonReplacer);
-    }
+      if (doc) {
+        item = JSON.stringify(doc, jsonReplacer);
+      }
 
-    if (item !== (this.cacheData.get(key) || null)) {
-      this.cacheData.set(key, item);
-      this.cacheWriteKey$.next(key);
+      if (item !== (this.cacheData.get(key) || null)) {
+        this.cacheData.set(key, item);
+        this.cacheWriteKey$.next(key);
+      }
     }
   }
 

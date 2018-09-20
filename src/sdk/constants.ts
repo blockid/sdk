@@ -1,5 +1,5 @@
 export enum SdkStorageKeys {
   Device = "device",
   Settings = "settings",
-  Identity = "identity",
+  SharedAccount = "shared_account",
 }

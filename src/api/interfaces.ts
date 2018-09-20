@@ -1,6 +1,6 @@
 import { Subject } from "rxjs";
 import { TUniqueBehaviorSubject, IAttributesProxySubject } from "rxjs-addons";
-import { IApiEvent } from "./events";
+import { ApiEvents, IApiEvent } from "./events";
 import { ApiStates } from "./constants";
 
 export interface IApi extends IAttributesProxySubject<IApiAttributes> {
@@ -9,6 +9,10 @@ export interface IApi extends IAttributesProxySubject<IApiAttributes> {
   options$: TUniqueBehaviorSubject<IApiOptions>;
   options: IApiOptions;
   event$: Subject<IApiEvent>;
+  sendVerifySession(payload: ApiEvents.Payloads.ISignedSession): void;
+  sendMuteSession(): void;
+  sendUnMuteSession(): void;
+  callGetSettings<T = any>(): Promise<T>;
 }
 
 export interface IApiOptions {

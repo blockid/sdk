@@ -78,7 +78,7 @@ export class Linker implements ILinker {
    * constructor
    * @param options
    */
-  constructor(options: ILinkerOptions = {}) {
+  constructor(options: ILinkerOptions = null) {
     this.options = {
       app: UNKNOWN_APP,
       ...(options || {}),

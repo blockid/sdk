@@ -42,14 +42,14 @@ export class Contract implements IContract {
   /**
    * constructor
    * @param abi
-   * @param network
    * @param device
+   * @param network
    * @param address
    */
   protected constructor(
     protected abi: TAbi,
-    protected network: INetwork = null,
     protected device: IDevice = null,
+    protected network: INetwork = null,
     address: string = null,
   ) {
     this.address$ = new UniqueBehaviorSubject<string>(address);
@@ -92,8 +92,8 @@ export class Contract implements IContract {
   public at(address: string): IContract {
     return new Contract(
       this.abi,
-      this.network,
       this.device,
+      this.network,
       this.address,
     );
   }

@@ -3,16 +3,18 @@
 import { IBN } from "bn.js";
 import { IProvider } from "ethjs";
 import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
-import { NetworkStates, NetworkVersions } from "./constants";
+import { NetworkStates, NetworkTypes } from "./constants";
 
 export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
-  version$?: TUniqueBehaviorSubject<NetworkVersions>;
-  version?: NetworkVersions;
+  version$?: TUniqueBehaviorSubject<number>;
+  version?: number;
   name$?: TUniqueBehaviorSubject<string>;
   name?: string;
+  type$?: TUniqueBehaviorSubject<NetworkTypes>;
+  type?: NetworkTypes;
   state$?: TUniqueBehaviorSubject<NetworkStates>;
   state?: NetworkStates;
-  detectVersion(): Promise<NetworkVersions>;
+  detectType(): Promise<NetworkTypes>;
   getPrimaryAccount(): Promise<string>;
   getBalance(target: any): Promise<IBN>;
   getTransactionCount(target: any): Promise<IBN>;
@@ -28,8 +30,9 @@ export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
 }
 
 export interface INetworkAttributes {
-  version?: NetworkVersions;
+  version?: number;
   name?: string;
+  type?: NetworkTypes;
   state?: NetworkStates;
   providerEndpoint?: string;
 }

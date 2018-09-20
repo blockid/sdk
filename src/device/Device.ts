@@ -1,8 +1,10 @@
 import { IBN } from "bn.js";
 import * as EthereumTx from "ethereumjs-tx";
-import { privateKeyVerify, publicKeyVerify, publicKeyCreate } from "secp256k1";
 import { AttributesProxySubject } from "rxjs-addons";
 import {
+  verifyPrivateKey,
+  verifyPublicKey,
+  privateToPublicKey,
   signPersonalMessage,
   publicKeyToAddress,
   prepareAddress,
@@ -24,16 +26,16 @@ export class Device extends AttributesProxySubject<IDeviceAttributes> implements
 
       if (
         privateKey &&
-        privateKeyVerify(privateKey)
+        verifyPrivateKey(privateKey)
       ) {
-        publicKey = publicKeyCreate(privateKey, false);
+        publicKey = privateToPublicKey(privateKey);
       } else {
         privateKey = null;
       }
 
       if (
         publicKey &&
-        publicKeyVerify(publicKey)
+        verifyPublicKey(publicKey)
       ) {
         address = publicKeyToAddress(publicKey);
       } else {

@@ -15,7 +15,7 @@ export class EnsResolverContract extends Contract implements IEnsResolverContrac
    * @param address
    */
   constructor(network: INetwork, address: string = null) {
-    super(abi, network, null, address);
+    super(abi, null, network, address);
   }
 
   /**

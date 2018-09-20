@@ -19,10 +19,9 @@ export class Ens extends AttributesProxySubject<IEnsAttributes> implements IEns 
   /**
    * constructor
    * @param network
-   * @param attributes
    */
-  constructor(private network: INetwork, attributes: IEnsAttributes = null) {
-    super(attributes, {
+  constructor(private network: INetwork) {
+    super(null, {
       schema: {},
     });
 
@@ -36,8 +35,9 @@ export class Ens extends AttributesProxySubject<IEnsAttributes> implements IEns 
   /**
    * lookup
    * @param name
+   * @param useOwnResolver
    */
-  public async lookup(name: string): Promise<IEnsRecord> {
+  public async lookup(name: string, useOwnResolver = false): Promise<IEnsRecord> {
     let result: IEnsRecord = null;
 
     const info = getEnsNameInfo(name);
@@ -49,11 +49,20 @@ export class Ens extends AttributesProxySubject<IEnsAttributes> implements IEns 
       };
 
       const nameHash = getEnsNameHash(name);
-      const address = await this.contract.getResolverAddress(nameHash);
 
-      if (address) {
-        const resolverContract = this.resolverContract.at(address);
-        result.address = await resolverContract.resolveAddress(nameHash);
+      let resolver: IEnsResolverContract = null;
+
+      if (useOwnResolver) {
+        resolver = this.resolverContract;
+      } else {
+        const address = await this.contract.getResolverAddress(nameHash);
+        if (address) {
+          resolver = this.resolverContract.at(address);
+        }
+      }
+
+      if (resolver) {
+        result.address = await resolver.resolveAddress(nameHash);
       }
     }
 

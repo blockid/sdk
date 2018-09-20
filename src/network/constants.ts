@@ -1,10 +1,16 @@
 export enum NetworkVersions {
-  Unknown = "0",
-  MainNet = "1",
-  Ropsten = "3",
-  Rinkeby = "4",
-  Kovan = "42",
-  Local = "1000",
+  Main = 1,
+  Ropsten = 3,
+  Rinkeby = 4,
+  Kovan = 42,
+}
+
+export enum NetworkTypes {
+  Main = "main",
+  Ropsten = "ropsten",
+  Rinkeby = "rinkeby",
+  Kovan = "kovan",
+  Local = "local",
 }
 
 export enum NetworkStates {
@@ -14,10 +20,9 @@ export enum NetworkStates {
 }
 
 export const NETWORK_NAMES = {
-  unknown: "Unknown",
-  local: "Local",
-  [ NetworkVersions.MainNet ]: "MainNet",
-  [ NetworkVersions.Ropsten ]: "Ropsten",
-  [ NetworkVersions.Rinkeby ]: "Rinkeby",
-  [ NetworkVersions.Kovan ]: "Kovan",
+  [ NetworkTypes.Main ]: "MainNet",
+  [ NetworkTypes.Ropsten ]: "Ropsten",
+  [ NetworkTypes.Rinkeby ]: "Rinkeby",
+  [ NetworkTypes.Kovan ]: "Kovan",
+  [ NetworkTypes.Local ]: "Local",
 };

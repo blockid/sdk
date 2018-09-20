@@ -1,22 +1,17 @@
 /* tslint:disable:variable-name */
 
 import * as BN from "bn.js";
+import { anyToBuffer, anyToHex, sha3, targetToAddress } from "eth-utils";
 import * as Eth from "ethjs";
 import { ICallOptions, ISendTransactionOptions } from "ethjs";
 import { AttributesProxySubject } from "rxjs-addons";
-import {
-  anyToBuffer,
-  anyToHex,
-  sha3,
-  targetToAddress,
-} from "eth-utils";
-import { NETWORK_NAMES, NetworkStates, NetworkVersions } from "./constants";
+import { NETWORK_NAMES, NetworkStates, NetworkTypes, NetworkVersions } from "./constants";
 import {
   INetwork,
   INetworkAttributes,
-  INetworkOptions,
   INetworkBlock,
   INetworkMessageOptions,
+  INetworkOptions,
   INetworkTransactionOptions,
   INetworkTransactionReceipt,
 } from "./interfaces";
@@ -27,65 +22,92 @@ import { NetworkProvider } from "./provider";
  */
 export class Network extends AttributesProxySubject<INetworkAttributes> implements INetwork {
 
+  private static prepareAttributes(attributes: INetworkAttributes, oldAttributes: INetworkAttributes): INetworkAttributes {
+    let result: INetworkAttributes = {
+      version: null,
+      name: null,
+      state: NetworkStates.Unknown,
+      type: null,
+    };
+
+    if (attributes) {
+
+      result = {
+        ...result,
+        ...(oldAttributes || {}),
+        ...attributes,
+      };
+
+      const type = this.versionToType(result.version);
+
+      result = {
+        ...attributes,
+        name: type ? NETWORK_NAMES[ type ] : null,
+        type,
+      };
+    }
+
+    return result;
+  }
+
+  private static versionToType(version: number): NetworkTypes {
+    let result: NetworkTypes = null;
+
+    switch (version) {
+      case NetworkVersions.Main:
+        result = NetworkTypes.Main;
+        break;
+      case NetworkVersions.Ropsten:
+        result = NetworkTypes.Ropsten;
+        break;
+      case NetworkVersions.Rinkeby:
+        result = NetworkTypes.Rinkeby;
+        break;
+      case NetworkVersions.Kovan:
+        result = NetworkTypes.Kovan;
+        break;
+
+      default:
+        if (version >= 1000) {
+          result = NetworkTypes.Local;
+        }
+    }
+
+    return result;
+  }
+
   private eth: Eth.IEth;
-  private provider = new NetworkProvider();
 
   /**
    * Network
-   * @param attributes
    * @param options
    */
-  constructor(attributes: INetworkAttributes = {}, options: INetworkOptions = {}) {
-    super(attributes, {
+  constructor(options: INetworkOptions = null) {
+    super(null, {
       schema: {
         version: true,
         name: true,
         state: true,
       },
-      prepare: (newValue, oldValue) => {
-        let result: INetworkAttributes = {
-          state: NetworkStates.Unknown,
-          version: NetworkVersions.Unknown,
-          name: NETWORK_NAMES.unknown,
-        };
-
-        if (newValue) {
-          result = {
-            ...result,
-            ...(oldValue || {}),
-            ...newValue,
-          };
-
-          const version = parseInt(result.version, 10);
-
-          result.name = version >= 1000
-            ? NETWORK_NAMES.local
-            : NETWORK_NAMES[ result.version ] || NETWORK_NAMES.unknown;
-        }
-
-        return result;
-      },
+      prepare: Network.prepareAttributes,
     });
 
-    this.eth = new Eth(options.customProvider || this.provider);
+    options = {
+      ...(options || {}),
+    };
 
-    if (!options.customProvider) {
-      this.getAttribute$("providerEndpoint").subscribe(this.provider.endpoint$);
+    if (options.customProvider) {
+      this.eth = new Eth(options.customProvider);
+    } else {
+      const provider = new NetworkProvider();
+      this.eth = new Eth(provider);
+      this.getAttribute$("providerEndpoint").subscribe(provider.endpoint$);
     }
   }
 
-  /**
-   * detects version
-   */
-  public detectVersion(): Promise<NetworkVersions> {
-    return this
-      .eth
-      .net_version()
-      .then((version) => NETWORK_NAMES[ version ]
-        ? version
-        : null,
-      )
-      .catch(() => null);
+  public async detectType(): Promise<NetworkTypes> {
+    const version = parseInt(await this.eth.net_version().catch(() => "0"), 10);
+    return Network.versionToType(version);
   }
 
   /**
