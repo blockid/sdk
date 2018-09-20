@@ -3,7 +3,7 @@ import "cross-fetch/polyfill";
 import { Subject } from "rxjs";
 import { AttributesProxySubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { map } from "rxjs/operators";
-import { jsonReplacer, jsonReviver } from "../json";
+import { jsonReplacer, jsonReviver } from "eth-utils";
 import { ApiCalls } from "./calls";
 import { ApiConnection, IApiConnection } from "./connection";
 import { ApiStates } from "./constants";

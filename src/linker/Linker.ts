@@ -1,7 +1,7 @@
 import { parse, stringify } from "querystring";
 import { filter, map } from "rxjs/operators";
 import { UniqueBehaviorSubject } from "rxjs-addons";
-import { jsonReplacer, jsonReviver } from "../json";
+import { jsonReviver, jsonReplacer } from "eth-utils";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 import { ILinker, ILinkerAction, ILinkerApp, ILinkerOptions, ILinkerTarget } from "./interfaces";
 
