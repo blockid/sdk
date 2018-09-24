@@ -8,6 +8,7 @@
     "no-console": false,
     "no-namespace": false,
     "no-shadowed-variable": false,
+    "no-empty-interface": false,
     "max-line-length": false
   }
 }

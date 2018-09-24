@@ -10,3 +10,30 @@ export interface IContract {
   encodeMethodInput(methodName: string, ...args: any[]): string;
   decodeMethodOutput<T = IResult>(methodName: string, data: string): T;
 }
+
+export interface IEnsContract extends IContract {
+  getResolverAddress(nameHash: string): Promise<string>;
+}
+
+export interface IEnsResolverContract extends IContract {
+  at(address: string): IEnsResolverContract;
+  resolveAddress(nameHash: string): Promise<string>;
+}
+
+export interface IRegistryContact extends IContract {
+  sharedAccountExists(
+    sharedAccount: string,
+  ): Promise<boolean>;
+
+  createSharedAccount(
+    salt: number,
+    ensLabel: string,
+    ensRootNode: string,
+    memberMessageSignature: string,
+    guardianMessageSignature: string,
+  ): Promise<string>;
+}
+
+export interface ISharedAccountContact extends IContract {
+  //
+}

@@ -1,8 +1,8 @@
-import { Contract } from "../../contract";
-import { IDevice } from "../../device";
-import { INetwork } from "../../network";
+import { IDevice } from "../device";
+import { INetwork } from "../network";
+import { Contract } from "./Contract";
 import { IRegistryContact } from "./interfaces";
-import abi from "./RegistryAbi";
+import { RegistryAbi } from "./abi";
 
 /**
  * Registry contact
@@ -16,7 +16,7 @@ export class RegistryContact extends Contract implements IRegistryContact {
    * @param address
    */
   constructor(device: IDevice = null, network: INetwork = null, address: string = null) {
-    super(abi, device, network, address);
+    super(RegistryAbi, device, network, address);
   }
 
   /**

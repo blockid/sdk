@@ -10,7 +10,7 @@
     "removeComments": true,
     "outDir": "./dist",
     "typeRoots": [
-      "@types",
+      "./src/@types",
       "node_modules/@types"
     ],
     "lib": [

@@ -1,8 +1,8 @@
 import { AttributesProxySubject } from "rxjs-addons";
+import { IRegistryContact, RegistryContact } from "../contract";
 import { INetwork } from "../network";
 import { IDevice } from "../device";
 import { IRegistry, IRegistryAttributes } from "./interfaces";
-import { IRegistryContact, RegistryContact } from "./contracts";
 
 /**
  * Registry

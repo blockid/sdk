@@ -1,8 +1,8 @@
 import { prepareAddress } from "eth-utils";
-import { Contract } from "../../contract";
-import { INetwork } from "../../network";
+import { INetwork } from "../network";
+import { Contract } from "./Contract";
 import { IEnsResolverContract } from "./interfaces";
-import abi from "./EnsResolverAbi";
+import { EnsResolverAbi } from "./abi";
 
 /**
  * Ens resolver contract
@@ -15,7 +15,7 @@ export class EnsResolverContract extends Contract implements IEnsResolverContrac
    * @param address
    */
   constructor(network: INetwork, address: string = null) {
-    super(abi, null, network, address);
+    super(EnsResolverAbi, null, network, address);
   }
 
   /**

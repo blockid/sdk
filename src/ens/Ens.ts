@@ -3,9 +3,9 @@ import {
   getEnsNameHash,
   getEnsNameInfo,
 } from "eth-utils";
+import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } from "../contract";
 import { INetwork } from "../network";
 import { IEns, IEnsAttributes, IEnsRecord } from "./interfaces";
-import { IEnsContract, IEnsResolverContract, EnsContract, EnsResolverContract } from "./contracts";
 
 /**
  * Ens

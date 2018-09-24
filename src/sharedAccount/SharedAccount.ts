@@ -1,8 +1,8 @@
 import { AttributesProxySubject } from "rxjs-addons";
+import { SharedAccountContact, ISharedAccountContact } from "../contract";
 import { IApi } from "../api";
 import { IDevice } from "../device";
 import { INetwork } from "../network";
-import { SharedAccountContact, ISharedAccountContact } from "./contracts";
 import { ISharedAccount, ISharedAccountOptions, ISharedAccountAttributes } from "./interfaces";
 
 /**

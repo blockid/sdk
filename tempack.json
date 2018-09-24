@@ -12,8 +12,5 @@
   ],
   "copyFiles": [
     "README.md"
-  ],
-  "copyDirs": [
-    "@types"
   ]
 }

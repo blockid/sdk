@@ -1,8 +1,8 @@
-import { Contract } from "../../contract";
-import { IDevice } from "../../device";
-import { INetwork } from "../../network";
+import { IDevice } from "../device";
+import { INetwork } from "../network";
+import { Contract } from "./Contract";
 import { ISharedAccountContact } from "./interfaces";
-import abi from "./SharedAccountAbi";
+import { SharedAccountAbi } from "./abi";
 
 /**
  * Shared account contact
@@ -16,6 +16,6 @@ export class SharedAccountContact extends Contract implements ISharedAccountCont
    * @param address
    */
   constructor(device: IDevice = null, network: INetwork = null, address: string = null) {
-    super(abi, device, network, address);
+    super(SharedAccountAbi, device, network, address);
   }
 }
