@@ -1,3 +1,4 @@
+export * from "./account";
 export * from "./api";
 export * from "./contract";
 export * from "./device";
@@ -6,5 +7,4 @@ export * from "./linker";
 export * from "./network";
 export * from "./registry";
 export * from "./sdk";
-export * from "./sharedAccount";
 export * from "./storage";

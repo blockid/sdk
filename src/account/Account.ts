@@ -3,14 +3,14 @@ import { SharedAccountContact, ISharedAccountContact } from "../contract";
 import { IApi } from "../api";
 import { IDevice } from "../device";
 import { INetwork } from "../network";
-import { ISharedAccount, ISharedAccountOptions, ISharedAccountAttributes } from "./interfaces";
+import { IAccount, IAccountOptions, IAccountAttributes } from "./interfaces";
 
 /**
- * Shared account
+ * Account
  */
-export class SharedAccount extends AttributesProxySubject<ISharedAccountAttributes> implements ISharedAccount {
+export class Account extends AttributesProxySubject<IAccountAttributes> implements IAccount {
 
-  private options: ISharedAccountOptions;
+  private options: IAccountOptions;
 
   private contract: ISharedAccountContact;
 
@@ -21,7 +21,7 @@ export class SharedAccount extends AttributesProxySubject<ISharedAccountAttribut
    * @param network
    * @param options
    */
-  constructor(private api: IApi, private device: IDevice, private network: INetwork, options: ISharedAccountOptions = null) {
+  constructor(private api: IApi, private device: IDevice, private network: INetwork, options: IAccountOptions = null) {
     super(null, {
       schema: {
         state: true,
