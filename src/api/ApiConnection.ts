@@ -1,26 +1,39 @@
 import { Subject } from "rxjs";
-import { UniqueBehaviorSubject } from "rxjs-addons";
-import { IApiConnection } from "./interfaces";
+import { AttributesProxySubject, ErrorSubject } from "rxjs-addons";
+import { ApiConnectionStates } from "./constants";
+import { decodeApiEvent, encodeApiEvent, IApiEvent } from "./events";
+import { IApiConnection, IApiConnectionAttributes } from "./interfaces";
 
 /**
  * Api connection
  */
-export class ApiConnection implements IApiConnection {
+export class ApiConnection extends AttributesProxySubject<IApiConnectionAttributes> implements IApiConnection {
+
+  private static prepareAttributes(attributes: IApiConnectionAttributes): IApiConnectionAttributes {
+    let result: IApiConnectionAttributes = {
+      state: ApiConnectionStates.Disconnected,
+      muted: true,
+    };
+
+    if (attributes) {
+      result = {
+        ...result,
+        ...attributes,
+      };
+    }
+
+    return result;
+  }
 
   /**
-   * connected subject
+   * event subject
    */
-  public connected$ = new UniqueBehaviorSubject<boolean>(false);
+  public event$ = new Subject<IApiEvent>();
 
   /**
    * error subject
    */
-  public error$ = new Subject<any>();
-
-  /**
-   * data subject
-   */
-  public data$ = new Subject<Buffer>();
+  public error$ = new ErrorSubject();
 
   private ws: WebSocket = null;
 
@@ -28,6 +41,16 @@ export class ApiConnection implements IApiConnection {
    * constructor
    */
   constructor() {
+    super({
+      state: ApiConnectionStates.Disconnected,
+      muted: true,
+    }, {
+      schema: {
+        state: true,
+        muted: true,
+      },
+      prepare: ApiConnection.prepareAttributes,
+    });
 
     // binds handlers to this
     this.openHandler = this.openHandler.bind(this);
@@ -40,16 +63,19 @@ export class ApiConnection implements IApiConnection {
   /**
    * connects
    * @param endpoint
+   * @param protocol
    */
-  public connect(endpoint: string = null): void {
+  public connect(endpoint: string, protocol: string): void {
+    this.setAttribute("muted", true);
+
     if (typeof WebSocket !== "undefined") {
 
       this.disconnect(false);
 
       if (endpoint) {
-        this.connected = null;
+        this.setAttribute("state", ApiConnectionStates.Verifying);
 
-        this.ws = new WebSocket(endpoint);
+        this.ws = new WebSocket(endpoint, protocol);
         this.ws.binaryType = "arraybuffer";
 
         this.addOpeningHandlers();
@@ -57,47 +83,45 @@ export class ApiConnection implements IApiConnection {
       }
     }
 
-    this.connected = false;
+    this.setAttribute("state", ApiConnectionStates.Disconnected);
   }
 
   /**
    * disconnects
-   * @param emit
+   * @param emitState
    */
-  public disconnect(emit: boolean = true): void {
-    switch (this.connected) {
-      case true:
+  public disconnect(emitState: boolean = true): void {
+    switch (this.getAttribute("state")) {
+      case ApiConnectionStates.Verified:
         this.removeOpenedHandlers();
         this.ws.close();
         break;
 
-      case null:
+      case ApiConnectionStates.Verifying:
         this.removeOpeningHandlers();
         this.ws.close();
         break;
+
+      case ApiConnectionStates.Disconnected:
+        return;
     }
 
-    if (emit) {
-      this.connected = false;
+    if (emitState) {
+      this.attributes = null;
     }
   }
 
   /**
-   * sends
-   * @param data
+   * emits
+   * @param event
    */
-  public send(data: Buffer): void {
-    if (this.connected) {
-      this.ws.send(data);
+  public emit<T>(event: IApiEvent<T>): void {
+    if (this.getAttribute("state") === ApiConnectionStates.Verified) {
+      const data = encodeApiEvent(event);
+      if (data) {
+        this.ws.send(data);
+      }
     }
-  }
-
-  private get connected(): boolean {
-    return this.connected$.value;
-  }
-
-  private set connected(connected: boolean) {
-    this.connected$.next(connected);
   }
 
   private addOpeningHandlers(): void {
@@ -125,20 +149,20 @@ export class ApiConnection implements IApiConnection {
   }
 
   private openHandler(): void {
-    this.connected = true;
+    this.setAttribute("state", ApiConnectionStates.Verified);
     this.removeOpeningHandlers();
     this.addOpenedHandlers();
   }
 
   private openErrorHandler(): void {
-    this.connected = false;
+    this.setAttribute("state", ApiConnectionStates.Disconnected);
     this.removeOpeningHandlers();
     this.ws.close();
   }
 
   private closeHandler(): void {
     this.removeOpenedHandlers();
-    this.connected = false;
+    this.setAttribute("state", ApiConnectionStates.Disconnected);
   }
 
   private errorHandler(event: WebSocketEventMap["error"]): void {
@@ -147,6 +171,9 @@ export class ApiConnection implements IApiConnection {
   }
 
   private messageHandler({ data }: WebSocketEventMap["message"]): void {
-    this.data$.next(Buffer.from(data));
+    const event = decodeApiEvent(Buffer.from(data));
+    if (event) {
+      this.event$.next(event);
+    }
   }
 }

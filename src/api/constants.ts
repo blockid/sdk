@@ -1,5 +1,5 @@
-export enum ApiStates {
-  Connecting = "CONNECTING",
-  Connected = "CONNECTED",
+export enum ApiConnectionStates {
+  Verifying = "VERIFYING",
+  Verified = "VERIFIED",
   Disconnected = "DISCONNECTED",
 }

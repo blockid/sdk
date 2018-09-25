@@ -3,7 +3,7 @@ import { filter, switchMap, map } from "rxjs/operators";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { generateRandomPrivateKey } from "eth-utils";
 import { IAccount, IAccountAttributes, Account } from "../account";
-import { Api, ApiStates, IApi } from "../api";
+import { Api, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
 import { ILinker, Linker } from "../linker";
@@ -56,11 +56,11 @@ export class Sdk implements ISdk {
       ...(options || {}),
     };
 
-    this.api = new Api(options.api);
     this.network = new Network(options.network);
     this.ens = new Ens(this.network);
     this.linker = new Linker(options.linker);
     this.device = new Device(this.network);
+    this.api = new Api(this.device, options.api);
     this.registry = new Registry(this.device, this.network);
     this.account = new Account(this.api, this.device, this.network, options.account);
     this.session = new Session(this.api, this.device, options.session);
@@ -77,8 +77,8 @@ export class Sdk implements ISdk {
       }
 
       await this.configureStorage();
-      await this.configureApi();
       await this.configureDevice();
+      await this.configureApi();
       await this.configureEns();
       await this.configureNetwork();
       await this.configureRegistry();
@@ -88,14 +88,6 @@ export class Sdk implements ISdk {
     }
 
     return this;
-  }
-
-  public signUp(ensName: string): void {
-    //
-  }
-
-  public signIn(ensName: string): void {
-    //
   }
 
   protected async configureStorage(): Promise<void> {
@@ -152,11 +144,11 @@ export class Sdk implements ISdk {
 
   protected async configureApi(): Promise<void> {
     this.api
-      .state$
+      .options$
       .pipe(
-        filter((state) => state === ApiStates.Connected),
+        filter((options) => !!options),
         switchMap(() => from(this.error$.wrapTAsync<ISdkSettings>(
-          this.api.callGetSettings(),
+          this.api.getSettings(),
         ))),
       )
       .subscribe(this.settings$);

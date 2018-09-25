@@ -1,10 +1,8 @@
 import { Type, Namespace } from "protobufjs";
 
 export enum ApiEventsPayloadProtoTypeNames {
-  Session = "Session",
-  SignedSession = "SignedSession",
-  SharedAccount = "SharedAccount",
-  SharedAccountMember = "SharedAccountMember",
+  Account = "Account",
+  AccountDevice = "AccountDevice",
 }
 
 const apiEventsPayloadProto = Namespace
@@ -12,39 +10,18 @@ const apiEventsPayloadProto = Namespace
     "apiEventsPayload",
     {
       nested: {
-        [ ApiEventsPayloadProtoTypeNames.Session ]: {
+        [ ApiEventsPayloadProtoTypeNames.Account ]: {
           fields: {
-            hash: {
-              type: "bytes",
-              id: 1,
-            },
-          },
-        },
-        [ ApiEventsPayloadProtoTypeNames.SignedSession ]: {
-          fields: {
-            signature: {
-              type: "bytes",
-              id: 1,
-            },
-          },
-        },
-        [ ApiEventsPayloadProtoTypeNames.SharedAccount ]: {
-          fields: {
-            address: {
-              type: "string",
-              id: 1,
-            },
             ensName: {
               type: "string",
-              id: 2,
-              rule: "optional",
+              id: 1,
             },
           },
         },
-        [ ApiEventsPayloadProtoTypeNames.SharedAccountMember ]: {
+        [ ApiEventsPayloadProtoTypeNames.AccountDevice ]: {
           fields: {
-            sharedAccount: {
-              type: ApiEventsPayloadProtoTypeNames.SharedAccount,
+            account: {
+              type: ApiEventsPayloadProtoTypeNames.Account,
               id: 1,
             },
             address: {
@@ -57,14 +34,7 @@ const apiEventsPayloadProto = Namespace
     },
   );
 
-export const apiEventsPayloadProtoBytesMapper: { [ key: string ]: any } = {
-  hash: Buffer,
-  signature: Buffer,
-};
-
 export const apiEventsPayloadProtoTypes: { [ key: string ]: Type } = {
-  Session: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.Session),
-  SignedSession: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.SignedSession),
-  SharedAccount: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.SharedAccount),
-  SharedAccountMember: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.SharedAccountMember),
+  Account: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.Account),
+  AccountDevice: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.AccountDevice),
 };

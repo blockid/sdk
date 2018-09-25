@@ -1,8 +1,6 @@
 import { Type, BufferReader } from "protobufjs";
-import * as BN from "bn.js";
 import { anyToBuffer } from "eth-utils";
 import {
-  apiEventsPayloadProtoBytesMapper,
   ApiEventsPayloadProtoTypeNames,
   apiEventsPayloadProtoTypes,
 } from "./proto";
@@ -13,23 +11,15 @@ function getPayloadProtoType(eventType: ApiEvents.Types): Type {
   let result: Type = null;
 
   switch (eventType) {
-    case ApiEvents.Types.SessionCreated:
-      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.Session ];
+
+    case ApiEvents.Types.AccountUpdated:
+      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.Account ];
       break;
 
-    case ApiEvents.Types.VerifySession:
-      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.SignedSession ];
-      break;
-
-    case ApiEvents.Types.SharedAccountDeployed:
-      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.SharedAccount ];
-      break;
-
-    case ApiEvents.Types.SharedAccountMemberAdded:
-    case ApiEvents.Types.SharedAccountMemberLimitUpdated:
-    case ApiEvents.Types.SharedAccountMemberManagerUpdated:
-    case ApiEvents.Types.SharedAccountMemberRemoved:
-      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.SharedAccountMember ];
+    case ApiEvents.Types.AccountDeviceAdded:
+    case ApiEvents.Types.AccountDeviceUpdated:
+    case ApiEvents.Types.AccountDeviceRemoved:
+      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.AccountDevice ];
       break;
   }
 
@@ -50,26 +40,8 @@ export function encodeApiEvent<T = any>(event: IApiEvent<T>): Buffer {
     event.payload
   ) {
     try {
-      const payload: { [ key: string ]: any } = {};
-
-      for (const key in event.payload) {
-        if (event.payload.hasOwnProperty(key)) {
-          const data: any = event.payload[ key ];
-
-          switch (apiEventsPayloadProtoBytesMapper[ key ]) {
-            case Buffer:
-            case BN:
-              payload[ key ] = anyToBuffer(data);
-              break;
-
-            default:
-              payload[ key ] = data;
-          }
-        }
-      }
-
       encoded = anyToBuffer(
-        payloadProtoType.encode(payload).finish() as any,
+        payloadProtoType.encode(event.payload).finish() as any,
       );
     } catch (err) {
       encoded = Buffer.alloc(0);
@@ -104,29 +76,7 @@ export function decodeApiEvent<T = any>(data: Buffer): IApiEvent<T> {
     ) {
       try {
         const reader = new BufferReader(data.slice(1));
-        const decoded = payloadProtoType.decode(reader) as { [ key: string ]: any };
-        const payload: { [ key: string ]: any } = {};
-
-        for (const key in decoded) {
-          if (decoded.hasOwnProperty(key)) {
-            const data: Buffer = decoded[ key ];
-
-            switch (apiEventsPayloadProtoBytesMapper[ key ]) {
-              case Buffer:
-                payload[ key ] = Buffer.from([ ...data ]);
-                break;
-
-              case BN:
-                payload[ key ] = new BN(data.toString("hex"), 16);
-                break;
-
-              default:
-                payload[ key ] = data;
-            }
-          }
-        }
-
-        result.payload = payload as any;
+        result.payload = payloadProtoType.decode(reader) as any;
       } catch (err) {
         result.payload = null;
       }

@@ -15,7 +15,7 @@ import {
   INetworkTransactionOptions,
   INetworkTransactionReceipt,
 } from "./interfaces";
-import { NetworkProvider } from "./provider";
+import { NetworkProvider } from "./NetworkProvider";
 
 /**
  * Network

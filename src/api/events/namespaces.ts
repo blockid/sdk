@@ -1,42 +1,29 @@
 export namespace ApiEvents {
   export enum Types {
 
-    // 0x0 - session
-    SessionCreated = 0x01,
-    VerifySession = 0x02,
-    SessionVerified = 0x03,
-    MuteSession = 0x04,
-    UnMuteSession = 0x05,
-    SessionMuted = 0x06,
-    SessionUnMuted = 0x07,
+    // 0x0 - connection
+    MuteConnection = 0x01,
+    UnMuteConnection = 0x02,
+    ConnectionMuted = 0x03,
+    ConnectionUnMuted = 0x04,
 
-    // 0x1 - shared account
-    SharedAccountDeployed = 0x12,
+    // 0x1 - account
+    AccountUpdated = 0x12,
 
-    // 0x2 - shared account member
-    SharedAccountMemberAdded = 0x21,
-    SharedAccountMemberLimitUpdated = 0x22,
-    SharedAccountMemberManagerUpdated = 0x23,
-    SharedAccountMemberRemoved = 0x24,
+    // 0x2 - account member
+    AccountDeviceAdded = 0x21,
+    AccountDeviceUpdated = 0x22,
+    AccountDeviceRemoved = 0x23,
   }
 
   export namespace Payloads {
 
-    export interface ISession {
-      hash: Buffer;
+    export interface IAccount {
+      ensName: string;
     }
 
-    export interface ISignedSession {
-      signature: Buffer;
-    }
-
-    export interface ISharedAccount {
-      address: string;
-      ensName?: string;
-    }
-
-    export interface ISharedAccountMember {
-      sharedAccount: ISharedAccount;
+    export interface IAccountDevice {
+      account: IAccount;
       address: string;
     }
   }

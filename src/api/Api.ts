@@ -1,35 +1,20 @@
 import "cross-fetch/polyfill";
 
-import { Subject } from "rxjs";
-import { AttributesProxySubject, UniqueBehaviorSubject } from "rxjs-addons";
-import { map } from "rxjs/operators";
 import { jsonReplacer, jsonReviver } from "eth-utils";
-import { ApiCalls } from "./calls";
-import { ApiConnection, IApiConnection } from "./connection";
-import { ApiStates } from "./constants";
-import { errApiUnknownOptions } from "./errors";
-import { ApiEvents, decodeApiEvent, encodeApiEvent, IApiEvent } from "./events";
-import { IApi, IApiAttributes, IApiOptions } from "./interfaces";
+import { concat } from "rxjs";
+import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
+import { filter, map } from "rxjs/operators";
+import { IDevice } from "../device";
+import { ApiConnection } from "./ApiConnection";
+import { ApiConnectionStates } from "./constants";
+import { errApiUnknownHttpEntpoint, errApiUnknownWsEntpoint } from "./errors";
+import { ApiEvents } from "./events";
+import { IApi, IApiConnection, IApiOptions, IApiRequest, IApiResponse } from "./interfaces";
 
 /**
  * Api
  */
-export class Api extends AttributesProxySubject<IApiAttributes> implements IApi {
-
-  private static prepareAttributes(attributes: IApiAttributes): IApiAttributes {
-    let result: IApiAttributes = {
-      state: ApiStates.Disconnected,
-    };
-
-    if (attributes) {
-      result = {
-        ...result,
-        ...attributes,
-      };
-    }
-
-    return result;
-  }
+export class Api implements IApi {
 
   private static buildEndpoint(protocol: "ws" | "http", options: IApiOptions = null): string {
     let result: string = null;
@@ -48,95 +33,69 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
   public options$ = new UniqueBehaviorSubject<IApiOptions>();
 
   /**
-   * event subject
+   * error subject
    */
-  public event$ = new Subject<IApiEvent>();
+  public error$ = new ErrorSubject();
 
-  private httpEndpoint: string = null;
-  private wsEndpoint: string = null;
+  private endpoints: {
+    http: string
+    ws: string;
+  } = null;
+
+  private sessionToken: string = null;
 
   private reconnectInterval: any = null;
 
   /**
    * constructor
+   * @param device
    * @param options
    * @param connection
    */
-  constructor(options: IApiOptions = null, private connection: IApiConnection = new ApiConnection()) {
-    super(null, {
-      schema: {
-        state: true,
-      },
-      prepare: Api.prepareAttributes,
-    });
-
+  constructor(private device: IDevice, options: IApiOptions = null, public connection: IApiConnection = new ApiConnection()) {
     this.options = options;
 
     this
       .options$
       .subscribe((options) => {
-        this.httpEndpoint = Api.buildEndpoint("http", options);
-        this.wsEndpoint = Api.buildEndpoint("ws", options);
-
-        if (this.reconnectInterval) {
-          clearInterval(this.reconnectInterval);
-        }
-
-        if (!options) {
-          this.connection.disconnect();
-          return;
-        }
-
-        const { reconnectTimeout } = options;
-        const connect = () => {
-          this.connection.connect(this.wsEndpoint);
+        this.endpoints = {
+          http: Api.buildEndpoint("http", options),
+          ws: Api.buildEndpoint("http", options),
         };
-
-        connect();
-
-        if (reconnectTimeout) {
-          this.reconnectInterval = setInterval(
-            () => {
-              switch (this.getAttribute("state")) {
-                case ApiStates.Disconnected:
-                  connect();
-                  break;
-              }
-            },
-            reconnectTimeout,
-          );
-        }
+        this.sessionToken = null;
       });
 
-    const { connected$, data$ } = this.connection;
+    const { event$ } = this.connection;
 
-    connected$
+    if (event$) {
+      event$
+        .pipe(
+          filter(({ type }) => (
+            type === ApiEvents.Types.ConnectionMuted ||
+            type === ApiEvents.Types.ConnectionUnMuted
+          )),
+          map(({ type }) => type === ApiEvents.Types.ConnectionMuted),
+        )
+        .subscribe(this.connection.muted$);
+    }
+
+    // auto auth
+    concat(this.options$, this.device.address$)
       .pipe(
-        map((connected) => {
-          let result: ApiStates = null;
-          switch (connected) {
-            case null:
-              result = ApiStates.Connecting;
-              break;
-
-            case true:
-              result = ApiStates.Connected;
-              break;
-
-            case false:
-              result = ApiStates.Disconnected;
-              break;
+        map(() => (
+          this.options &&
+          !!this.device.address
+        )),
+      )
+      .subscribe((canAuth) => {
+        if (canAuth) {
+          if (this.options.manualAuth) {
+            this.error$.wrapAsync(() => this.auth());
           }
-          return result;
-        }),
-      )
-      .subscribe(this.getAttribute$("state"));
-
-    data$
-      .pipe(
-        map(decodeApiEvent),
-      )
-      .subscribe(this.event$);
+        } else {
+          this.disconnect();
+        }
+      });
   }
 
   /**
@@ -155,39 +114,89 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
   }
 
   /**
-   * sends verify session
-   * @param payload
+   * auth
    */
-  public sendVerifySession(payload: ApiEvents.Payloads.ISignedSession): void {
-    this.send({
-      type: ApiEvents.Types.VerifySession,
-      payload,
+  public async auth(): Promise<void> {
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval);
+    }
+
+    if (!this.endpoints.ws) {
+      throw errApiUnknownWsEntpoint;
+    }
+
+    const { hash } = await this.createSession();
+    const signer = this.device.address;
+    const signature = this.device.signPersonalMessage(hash);
+
+    const { token } = await this.verifySession({
+      hash,
+      signer,
+      signature,
+    });
+
+    this.sessionToken = token;
+
+    const { reconnectTimeout } = this.options;
+
+    const connect = () => {
+      this.connection.connect(
+        this.endpoints.ws,
+        this.sessionToken,
+      );
+    };
+
+    connect();
+
+    if (reconnectTimeout) {
+      this.reconnectInterval = setInterval(
+        () => {
+          switch (this.connection.state) {
+            case ApiConnectionStates.Disconnected:
+              connect();
+              break;
+          }
+        },
+        reconnectTimeout,
+      );
+    }
+  }
+
+  /**
+   * disconnects
+   */
+  public disconnect(): void {
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval);
+    }
+
+    this.sessionToken = null;
+    this.connection.disconnect(true);
+  }
+
+  /**
+   * mute connection
+   */
+  public muteConnection(): void {
+    this.connection.emit({
+      type: ApiEvents.Types.MuteConnection,
     });
   }
 
   /**
-   * sends mute session
+   * un mute connection
    */
-  public sendMuteSession(): void {
-    this.send({
-      type: ApiEvents.Types.MuteSession,
+  public unMuteConnection(): void {
+    this.connection.emit({
+      type: ApiEvents.Types.UnMuteConnection,
     });
   }
 
   /**
-   * sends un mute session
+   * GET /settings
    */
-  public sendUnMuteSession(): void {
-    this.send({
-      type: ApiEvents.Types.UnMuteSession,
-    });
-  }
-
-  /**
-   * calls GET /settings
-   */
-  public async callGetSettings<T = any>(): Promise<T> {
-    const { data } = await this.call<any, T>({
+  public async getSettings<B = any>(): Promise<B> {
+    const { data } = await this.call<any, B>({
       method: "GET",
       path: "settings",
     });
@@ -195,52 +204,47 @@ export class Api extends AttributesProxySubject<IApiAttributes> implements IApi 
     return data || null;
   }
 
-  private async call<B = any, D = any>(req: ApiCalls.IRequest<B>): Promise<ApiCalls.IResponse<D>> {
-    this.verifyOptions();
+  private async call<B = any, D = any>(req: IApiRequest<B>): Promise<IApiResponse<D>> {
+    if (!this.endpoints.http) {
+      throw errApiUnknownHttpEntpoint;
+    }
 
-    const { method, path, data } = req;
+    const { method, path, body } = req;
 
-    const res = await fetch(`${this.httpEndpoint}/${path}`, {
+    const res = await fetch(`${this.endpoints.http}/${path}`, {
       method,
       headers: new Headers({
         "Content-Type": "application/json",
+        "X-Session-Token": this.sessionToken || "",
       }),
       ...(
         method !== "GET" &&
         method !== "HEAD"
-          ? { body: JSON.stringify(data || {}, jsonReplacer) }
+          ? { body: JSON.stringify(body || {}, jsonReplacer) }
           : {}
       ),
     });
 
-    const result: ApiCalls.IResponse<D> = {};
-
     const text = await res.text();
-
-    switch (res.status) {
-      case 400:
-        break;
-
-      case 200:
-        result.data = JSON.parse(text, jsonReviver);
-        break;
-
-      default:
-        result.error = text as any;
-    }
-
-    return result;
+    return JSON.parse(text, jsonReviver);
   }
 
-  private send<T = any>(event: IApiEvent<T>): void {
-    this.verifyOptions();
+  private async createSession<D = { hash: Buffer }>(): Promise<D> {
+    const { data } = await this.call<any, D>({
+      method: "POST",
+      path: "session",
+    });
 
-    this.connection.send(encodeApiEvent(event));
+    return data || null;
   }
 
-  private verifyOptions(): void {
-    if (!this.options) {
-      throw errApiUnknownOptions;
-    }
+  private async verifySession<B = { signer: string, hash: Buffer, signature: Buffer }, D = { token: string }>(body: B): Promise<D> {
+    const { data } = await this.call<B, D>({
+      method: "PUT",
+      path: "session",
+      body,
+    });
+
+    return data || null;
   }
 }

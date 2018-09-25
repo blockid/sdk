@@ -42,6 +42,11 @@ export interface INetworkOptions {
   customProvider?: IProvider;
 }
 
+export interface INetworkProvider extends IProvider {
+  endpoint$: TUniqueBehaviorSubject<string>;
+  endpoint: string;
+}
+
 export interface INetworkMessageOptions {
   to: string;
   data: string | Buffer;
