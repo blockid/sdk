@@ -1,30 +1,20 @@
 import { Subject } from "rxjs";
 import { TUniqueBehaviorSubject, IAttributesProxySubject, IErrorSubject } from "rxjs-addons";
 import { IApiEvent } from "./events";
-import { ApiConnectionStates } from "./constants";
+import { ApiConnectionStates, ApiSessionStates } from "./constants";
 
 export interface IApi {
   connection: IApiConnection;
+  session: IApiSession;
   options$: TUniqueBehaviorSubject<IApiOptions>;
   options: IApiOptions;
+  event$: Subject<IApiEvent>;
   error$: IErrorSubject;
-  auth(): Promise<void>;
-  disconnect(): void;
+  createSession(): Promise<void>;
+  destroySession(): void;
   muteConnection(): void;
   unMuteConnection(): void;
   getSettings<B = any>(): Promise<B>;
-}
-
-export interface IApiConnection extends IAttributesProxySubject<IApiConnectionAttributes> {
-  state$?: TUniqueBehaviorSubject<ApiConnectionStates>;
-  state?: ApiConnectionStates;
-  muted$?: TUniqueBehaviorSubject<boolean>;
-  muted?: boolean;
-  event$: Subject<IApiEvent>;
-  error$: IErrorSubject;
-  connect(endpoint: string, protocol: string): void;
-  disconnect(emitState?: boolean): void;
-  emit<T = any>(event: IApiEvent<T>): void;
 }
 
 export interface IApiOptions {
@@ -33,6 +23,38 @@ export interface IApiOptions {
   ssl?: boolean;
   reconnectTimeout?: number;
   manualAuth?: boolean;
+}
+
+export interface IApiConnection extends IAttributesProxySubject<IApiConnectionAttributes> {
+  state$?: TUniqueBehaviorSubject<ApiConnectionStates>;
+  state?: ApiConnectionStates;
+  muted$?: TUniqueBehaviorSubject<boolean>;
+  muted?: boolean;
+  data$: Subject<Buffer>;
+  error$: IErrorSubject;
+  opened: boolean;
+  open(endpoint: string, protocol: string): void;
+  close(emitState?: boolean): void;
+  send(data: Buffer): void;
+}
+
+export interface IApiSession extends IAttributesProxySubject<IApiSessionAttributes> {
+  token?: string;
+  state$?: TUniqueBehaviorSubject<ApiSessionStates>;
+  state?: ApiSessionStates;
+  verified: boolean;
+  signHash(hash: Buffer): Promise<{
+    signer: string;
+    signature: Buffer;
+  }>;
+  setAsVerifying(token?: string): void;
+  setAsVerified(token: string): void;
+  setAsDestroyed(): void;
+}
+
+export interface IApiSessionAttributes {
+  token: string;
+  state: ApiSessionStates;
 }
 
 export interface IApiConnectionAttributes {

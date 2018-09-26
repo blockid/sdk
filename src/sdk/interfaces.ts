@@ -6,7 +6,6 @@ import { IEns, IEnsAttributes } from "../ens";
 import { ILinker, ILinkerOptions } from "../linker";
 import { INetwork, INetworkAttributes, INetworkOptions } from "../network";
 import { IRegistry, IRegistryAttributes } from "../registry";
-import { ISession, ISessionOptions } from "../session";
 import { IStorageOptions } from "../storage";
 
 export interface ISdk {
@@ -18,7 +17,6 @@ export interface ISdk {
   linker: ILinker;
   network: INetwork;
   registry: IRegistry;
-  session: ISession;
   configure(): Promise<ISdk>;
 }
 
@@ -27,7 +25,6 @@ export interface ISdkOptions {
   api?: IApiOptions;
   linker?: ILinkerOptions;
   network?: INetworkOptions;
-  session?: ISessionOptions;
   storage?: IStorageOptions;
 }
 

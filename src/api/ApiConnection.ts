@@ -1,7 +1,6 @@
 import { Subject } from "rxjs";
 import { AttributesProxySubject, ErrorSubject } from "rxjs-addons";
 import { ApiConnectionStates } from "./constants";
-import { decodeApiEvent, encodeApiEvent, IApiEvent } from "./events";
 import { IApiConnection, IApiConnectionAttributes } from "./interfaces";
 
 /**
@@ -11,7 +10,7 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
 
   private static prepareAttributes(attributes: IApiConnectionAttributes): IApiConnectionAttributes {
     let result: IApiConnectionAttributes = {
-      state: ApiConnectionStates.Disconnected,
+      state: ApiConnectionStates.Closed,
       muted: true,
     };
 
@@ -26,9 +25,9 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
   }
 
   /**
-   * event subject
+   * data subject
    */
-  public event$ = new Subject<IApiEvent>();
+  public data$ = new Subject<Buffer>();
 
   /**
    * error subject
@@ -41,10 +40,7 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
    * constructor
    */
   constructor() {
-    super({
-      state: ApiConnectionStates.Disconnected,
-      muted: true,
-    }, {
+    super(null, {
       schema: {
         state: true,
         muted: true,
@@ -61,19 +57,26 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
   }
 
   /**
-   * connects
+   * opened getter
+   */
+  public get opened(): boolean {
+    return this.getAttribute("state") === ApiConnectionStates.Opened;
+  }
+
+  /**
+   * opens
    * @param endpoint
    * @param protocol
    */
-  public connect(endpoint: string, protocol: string): void {
+  public open(endpoint: string, protocol: string): void {
     this.setAttribute("muted", true);
 
     if (typeof WebSocket !== "undefined") {
 
-      this.disconnect(false);
+      this.close(false);
 
       if (endpoint) {
-        this.setAttribute("state", ApiConnectionStates.Verifying);
+        this.setAttribute("state", ApiConnectionStates.Opening);
 
         this.ws = new WebSocket(endpoint, protocol);
         this.ws.binaryType = "arraybuffer";
@@ -83,26 +86,26 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
       }
     }
 
-    this.setAttribute("state", ApiConnectionStates.Disconnected);
+    this.setAttribute("state", ApiConnectionStates.Closed);
   }
 
   /**
    * disconnects
    * @param emitState
    */
-  public disconnect(emitState: boolean = true): void {
+  public close(emitState: boolean = true): void {
     switch (this.getAttribute("state")) {
-      case ApiConnectionStates.Verified:
+      case ApiConnectionStates.Opened:
         this.removeOpenedHandlers();
         this.ws.close();
         break;
 
-      case ApiConnectionStates.Verifying:
+      case ApiConnectionStates.Opening:
         this.removeOpeningHandlers();
         this.ws.close();
         break;
 
-      case ApiConnectionStates.Disconnected:
+      case ApiConnectionStates.Closed:
         return;
     }
 
@@ -112,15 +115,12 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
   }
 
   /**
-   * emits
-   * @param event
+   * sends
+   * @param data
    */
-  public emit<T>(event: IApiEvent<T>): void {
-    if (this.getAttribute("state") === ApiConnectionStates.Verified) {
-      const data = encodeApiEvent(event);
-      if (data) {
-        this.ws.send(data);
-      }
+  public send(data: Buffer): void {
+    if (data) {
+      this.ws.send(data);
     }
   }
 
@@ -149,20 +149,20 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
   }
 
   private openHandler(): void {
-    this.setAttribute("state", ApiConnectionStates.Verified);
+    this.setAttribute("state", ApiConnectionStates.Opened);
     this.removeOpeningHandlers();
     this.addOpenedHandlers();
   }
 
   private openErrorHandler(): void {
-    this.setAttribute("state", ApiConnectionStates.Disconnected);
+    this.setAttribute("state", ApiConnectionStates.Closed);
     this.removeOpeningHandlers();
     this.ws.close();
   }
 
   private closeHandler(): void {
     this.removeOpenedHandlers();
-    this.setAttribute("state", ApiConnectionStates.Disconnected);
+    this.setAttribute("state", ApiConnectionStates.Closed);
   }
 
   private errorHandler(event: WebSocketEventMap["error"]): void {
@@ -171,9 +171,6 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
   }
 
   private messageHandler({ data }: WebSocketEventMap["message"]): void {
-    const event = decodeApiEvent(Buffer.from(data));
-    if (event) {
-      this.event$.next(event);
-    }
+    this.data$.next(Buffer.from(data));
   }
 }

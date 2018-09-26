@@ -9,7 +9,6 @@ import { Ens, IEns } from "../ens";
 import { ILinker, Linker } from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
-import { ISession, Session } from "../session";
 import { IStorage, Storage } from "../storage";
 import { SdkStorageKeys } from "./constants";
 import { ISdk, ISdkOptions, ISdkSettings } from "./interfaces";
@@ -35,8 +34,6 @@ export class Sdk implements ISdk {
 
   public registry: IRegistry;
 
-  public session: ISession;
-
   private settings$ = new UniqueBehaviorSubject<ISdkSettings>(null);
 
   private storage: IStorage;
@@ -51,7 +48,6 @@ export class Sdk implements ISdk {
       api: null,
       linker: null,
       network: null,
-      session: null,
       storage: null,
       ...(options || {}),
     };
@@ -63,7 +59,6 @@ export class Sdk implements ISdk {
     this.api = new Api(this.device, options.api);
     this.registry = new Registry(this.device, this.network);
     this.account = new Account(this.api, this.device, this.network, options.account);
-    this.session = new Session(this.api, this.device, options.session);
     this.storage = new Storage(options.storage);
   }
 
