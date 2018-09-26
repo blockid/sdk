@@ -1,5 +1,7 @@
 import { Subject } from "rxjs";
 import { TUniqueBehaviorSubject, IAttributesProxySubject, IErrorSubject } from "rxjs-addons";
+import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
+import { ISdkSettings } from "../sdk";
 import { IApiEvent } from "./events";
 import { ApiConnectionStates, ApiSessionStates } from "./constants";
 
@@ -14,7 +16,12 @@ export interface IApi {
   destroySession(): void;
   muteConnection(): void;
   unMuteConnection(): void;
-  getSettings<B = any>(): Promise<B>;
+  getSettings(): Promise<ISdkSettings>;
+  getAccount(accountEnsName: string): Promise<IAccountAttributes>;
+  getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]>;
+  getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes>;
+  reserveAccount(accountEnsName: string): Promise<IAccountAttributes>;
+  createAccount(accountEnsName: string, signature: Buffer): Promise<IAccountAttributes>;
 }
 
 export interface IApiOptions {

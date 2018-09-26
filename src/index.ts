@@ -1,5 +1,6 @@
 export * from "./account";
 export * from "./api";
+export * from "./app";
 export * from "./contract";
 export * from "./device";
 export * from "./ens";

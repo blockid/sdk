@@ -18,6 +18,13 @@ export interface ISdk {
   network: INetwork;
   registry: IRegistry;
   configure(): Promise<ISdk>;
+  createApiSession(): Promise<void>;
+  destroyApiSession(): void;
+  muteApiConnection(): void;
+  unMuteApiConnection(): void;
+  accountExists(accountEnsName: string): Promise<boolean>;
+  joinAccount(accountEnsName: string): Promise<string>;
+  createAccount(accountEnsName: string): Promise<void>;
 }
 
 export interface ISdkOptions {

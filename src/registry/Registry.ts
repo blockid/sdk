@@ -1,5 +1,7 @@
 import { AttributesProxySubject } from "rxjs-addons";
+import { getEnsNameInfo, abiEncodePacked } from "eth-utils";
 import { IRegistryContact, RegistryContact } from "../contract";
+import { IApi } from "../api";
 import { INetwork } from "../network";
 import { IDevice } from "../device";
 import { IRegistry, IRegistryAttributes } from "./interfaces";
@@ -21,13 +23,11 @@ export class Registry extends AttributesProxySubject<IRegistryAttributes> implem
 
   /**
    * constructor
+   * @param api
    * @param device
    * @param network
    */
-  constructor(
-    device: IDevice,
-    network: INetwork,
-  ) {
+  constructor(private api: IApi, private device: IDevice, network: INetwork) {
     super(null, {
       schema: {
         supportedEnsRootNodesNames: true,
@@ -40,5 +40,36 @@ export class Registry extends AttributesProxySubject<IRegistryAttributes> implem
     this
       .getAttribute$("address")
       .subscribe(this.contract.address$);
+  }
+
+  /**
+   * builds creation signature
+   * @param accountEnsName
+   */
+  public async buildCreationSignature(accountEnsName: string): Promise<Buffer> {
+    let result: Buffer = null;
+
+    const accountEnsNameInfo = getEnsNameInfo(accountEnsName);
+
+    if (
+      accountEnsNameInfo &&
+      accountEnsNameInfo.rootNode
+    ) {
+      const message = abiEncodePacked(
+        "address",
+        "uint256",
+        "bytes32",
+        "bytes32",
+      )(
+        this.getAttribute("address"),
+        0,
+        accountEnsNameInfo.labelHash,
+        accountEnsNameInfo.rootNode.nameHash,
+      );
+
+      result = await this.device.signPersonalMessage(message);
+    }
+
+    return result;
   }
 }

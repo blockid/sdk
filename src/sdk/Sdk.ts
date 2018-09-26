@@ -1,9 +1,10 @@
-import { from } from "rxjs";
-import { filter, switchMap, map } from "rxjs/operators";
-import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { generateRandomPrivateKey } from "eth-utils";
-import { IAccount, IAccountAttributes, Account } from "../account";
-import { Api, IApi } from "../api";
+import { from } from "rxjs";
+import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
+import { filter, map, switchMap } from "rxjs/operators";
+import { Account, IAccount, IAccountAttributes } from "../account";
+import { AccountStates } from "../account/constants";
+import { Api, ApiSessionStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
 import { ILinker, Linker } from "../linker";
@@ -57,7 +58,7 @@ export class Sdk implements ISdk {
     this.linker = new Linker(options.linker);
     this.device = new Device(this.network);
     this.api = new Api(this.device, options.api);
-    this.registry = new Registry(this.device, this.network);
+    this.registry = new Registry(this.api, this.device, this.network);
     this.account = new Account(this.api, this.device, this.network, options.account);
     this.storage = new Storage(options.storage);
   }
@@ -83,6 +84,106 @@ export class Sdk implements ISdk {
     }
 
     return this;
+  }
+
+  /**
+   * creates api session
+   */
+  public createApiSession(): Promise<void> {
+    return this.error$.wrapTAsync(this.api.createSession());
+  }
+
+  /**
+   * destroys api session
+   */
+  public destroyApiSession(): void {
+    this.api.destroySession();
+  }
+
+  /**
+   * mute api connection
+   */
+  public muteApiConnection(): void {
+    try {
+      this.api.muteConnection();
+    } catch (err) {
+      this.error$.next(err);
+    }
+  }
+
+  /**
+   * un mute api connection
+   */
+  public unMuteApiConnection(): void {
+    try {
+      this.api.unMuteConnection();
+    } catch (err) {
+      this.error$.next(err);
+    }
+  }
+
+  /**
+   * check if account exists
+   * @param accountEnsName
+   */
+  public accountExists(accountEnsName: string): Promise<boolean> {
+    return this.error$.wrapTAsync(async () => {
+      return !!(await this.api.getAccount(accountEnsName));
+    });
+  }
+
+  /**
+   * joins account
+   * @param accountEnsName
+   */
+  public joinAccount(accountEnsName: string): Promise<string> {
+    return this.error$.wrapTAsync(async () => {
+      const result: string = null;
+      const accountAttributes = await this.api.getAccount(accountEnsName);
+
+      if (!accountAttributes) {
+        return;
+      }
+
+      const accountDeviceAttributes = await this.api.getAccountDevice(accountEnsName, this.device.address);
+
+      if (accountDeviceAttributes) {
+        this.account.attributes = accountAttributes;
+      } else {
+        this.account.attributes = {
+          ...accountAttributes,
+          state: AccountStates.Pending,
+        };
+      }
+
+      return result;
+    });
+  }
+
+  /**
+   * creates account
+   * @param accountEnsName
+   */
+  public createAccount(accountEnsName: string): Promise<void> {
+    return this.error$.wrapTAsync(async () => {
+      let accountAttributes = await this.api.reserveAccount(accountEnsName);
+
+      if (!accountAttributes) {
+        return;
+      }
+
+      this.account.attributes = accountAttributes;
+
+      const signature = await this.registry.buildCreationSignature(accountEnsName);
+
+      accountAttributes = await this.api.createAccount(accountEnsName, signature);
+
+      if (!accountAttributes) {
+        return;
+      }
+
+      this.account.attributes = accountAttributes;
+    });
   }
 
   protected async configureStorage(): Promise<void> {
@@ -138,15 +239,28 @@ export class Sdk implements ISdk {
   }
 
   protected async configureApi(): Promise<void> {
-    this.api
+    this
+      .api
       .options$
       .pipe(
         filter((options) => !!options),
-        switchMap(() => from(this.error$.wrapTAsync<ISdkSettings>(
+        switchMap(() => from(this.error$.wrapTAsync(
           this.api.getSettings(),
         ))),
       )
       .subscribe(this.settings$);
+
+    this
+      .api
+      .session
+      .state$
+      .pipe(
+        filter((state) => state === ApiSessionStates.Verified),
+        switchMap(() => from(this.error$.wrapTAsync(async () => {
+          //
+        }))),
+      )
+      .subscribe();
   }
 
   protected configureDevice(): void {

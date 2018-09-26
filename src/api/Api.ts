@@ -1,9 +1,11 @@
 import "cross-fetch/polyfill";
 
 import { jsonReplacer, jsonReviver } from "eth-utils";
-import { concat, Subject } from "rxjs";
+import { merge, Subject } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map } from "rxjs/operators";
+import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
+import { ISdkSettings } from "../sdk";
 import { IDevice } from "../device";
 import { ApiConnection } from "./ApiConnection";
 import { ApiSession } from "./ApiSession";
@@ -81,8 +83,8 @@ export class Api implements IApi {
       .options$
       .subscribe((options) => {
         this.endpoints = {
-          http: Api.buildEndpoint("http", options),
           ws: Api.buildEndpoint("ws", options),
+          http: Api.buildEndpoint("http", options),
         };
 
         this.session.setAsDestroyed();
@@ -108,12 +110,16 @@ export class Api implements IApi {
       .subscribe(this.connection.muted$);
 
     // auto auth
-    concat(this.options$, device.address$)
+    merge(this.options$, device.address$)
       .pipe(
-        map(() => this.options && !!device.address),
+        map(() => (
+          this.options &&
+          !!device.address &&
+          !this.options.manualAuth
+        )),
       )
       .subscribe((canAuth) => {
-        if (canAuth && !this.options.manualAuth) {
+        if (canAuth) {
           this.error$.wrapAsync(() => this.createSession());
         } else {
           this.destroySession();
@@ -186,12 +192,90 @@ export class Api implements IApi {
   }
 
   /**
+   * gets settings
    * GET /settings
    */
-  public async getSettings<B = any>(): Promise<B> {
-    const { data } = await this.call<any, B>({
+  public async getSettings(): Promise<ISdkSettings> {
+    const { data } = await this.call<any, ISdkSettings>({
       method: "GET",
       path: "settings",
+    });
+
+    return data || null;
+  }
+
+  /**
+   * gets account
+   * @param accountEnsName
+   */
+  public async getAccount(accountEnsName: string): Promise<IAccountAttributes> {
+    const { data } = await this.call<any, IAccountAttributes>({
+      method: "GET",
+      path: `account/${accountEnsName}`,
+    });
+
+    return data || null;
+  }
+
+  /**
+   * gets account devices
+   * @param accountEnsName
+   */
+  public async getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]> {
+    const { data } = await this.call<any, IAccountDeviceAttributes[]>({
+      method: "GET",
+      path: `account/${accountEnsName}/device`,
+    });
+
+    return data || null;
+  }
+
+  /**
+   * gets account device
+   * @param accountEnsName
+   * @param deviceAddress
+   */
+  public async getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes> {
+    const { data } = await this.call<any, IAccountDeviceAttributes>({
+      method: "GET",
+      path: `account/${accountEnsName}/device/${deviceAddress}`,
+    });
+
+    return data || null;
+  }
+
+  /**
+   * reserves account
+   * @param accountEnsName
+   */
+  public async reserveAccount(accountEnsName: string): Promise<IAccountAttributes> {
+    const { data } = await this.call<{
+      ensName: string,
+    }, IAccountAttributes>({
+      method: "POST",
+      path: "account",
+      body: {
+        ensName: accountEnsName,
+      },
+    });
+
+    return data || null;
+  }
+
+  /**
+   * creates account
+   * @param accountEnsName
+   * @param signature
+   */
+  public async createAccount(accountEnsName: string, signature: Buffer): Promise<IAccountAttributes> {
+    const { data } = await this.call<{
+      signature: Buffer,
+    }, IAccountAttributes>({
+      method: "PUT",
+      path: `account/${accountEnsName}`,
+      body: {
+        signature,
+      },
     });
 
     return data || null;

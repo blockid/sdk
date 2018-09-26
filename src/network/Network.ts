@@ -41,7 +41,7 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
       const type = Network.versionToType(result.version);
 
       result = {
-        ...attributes,
+        ...result,
         name: type ? NETWORK_NAMES[ type ] : null,
         type,
       };
@@ -86,6 +86,7 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
     super(null, {
       schema: {
         version: true,
+        type: true,
         name: true,
         state: true,
       },

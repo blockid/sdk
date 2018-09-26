@@ -41,4 +41,25 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
       .getAttribute$("address")
       .subscribe(this.contract.address$);
   }
+
+  public async verify(): Promise<void> {
+    const ensName = this.getAttribute<string>("ensName");
+
+    if (!ensName) {
+      return;
+    }
+    const accountAttributes = await this.api.getAccount(ensName);
+
+    if (!accountAttributes) {
+      this.attributes = null;
+      return;
+    }
+
+    const accountDeviceAttributes = await this.api.getAccountDevice(ensName, this.device.address);
+
+    if (!accountDeviceAttributes) {
+      this.attributes = null;
+      return;
+    }
+  }
 }

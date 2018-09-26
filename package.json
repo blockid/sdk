@@ -37,7 +37,7 @@
     "ethjs-abi": "^0.2.1",
     "protobufjs": "^6.8.8",
     "rxjs": "6.3.3",
-    "rxjs-addons": "^0.0.2",
+    "rxjs-addons": "^0.0.3",
     "ts-node": "^7.0.1"
   },
   "devDependencies": {
