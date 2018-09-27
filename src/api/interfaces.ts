@@ -1,6 +1,7 @@
 import { Subject } from "rxjs";
 import { TUniqueBehaviorSubject, IAttributesProxySubject, IErrorSubject } from "rxjs-addons";
 import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
+import { IAppAttributes } from "../app";
 import { ISdkSettings } from "../sdk";
 import { IApiEvent } from "./events";
 import { ApiConnectionStates, ApiSessionStates } from "./constants";
@@ -22,6 +23,8 @@ export interface IApi {
   getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes>;
   reserveAccount(accountEnsName: string): Promise<IAccountAttributes>;
   createAccount(accountEnsName: string, signature: Buffer): Promise<IAccountAttributes>;
+  getApps(page?: number): Promise<IApiListData<IAppAttributes>>;
+  getApp(appNameOrAddress: string): Promise<IAppAttributes>;
 }
 
 export interface IApiOptions {
@@ -79,4 +82,10 @@ export interface IApiResponse<D = any> {
   data?: D;
   error?: string;
   errors?: { [ key: string ]: string };
+}
+
+export interface IApiListData<T> {
+  rows: T[];
+  currentPage: number;
+  totalPages: number;
 }

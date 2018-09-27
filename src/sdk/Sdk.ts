@@ -7,7 +7,7 @@ import { AccountStates } from "../account/constants";
 import { Api, ApiSessionStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
-import { ILinker, Linker } from "../linker";
+import { ILinker, Linker, LinkerActionPayloads, LinkerActionsTypes } from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
 import { IStorage, Storage } from "../storage";
@@ -37,7 +37,7 @@ export class Sdk implements ISdk {
 
   private settings$ = new UniqueBehaviorSubject<ISdkSettings>(null);
 
-  private storage: IStorage;
+  private storage: IStorage = null;
 
   /**
    * constructor
@@ -60,7 +60,9 @@ export class Sdk implements ISdk {
     this.api = new Api(this.device, options.api);
     this.registry = new Registry(this.api, this.device, this.network);
     this.account = new Account(this.api, this.device, this.network, options.account);
-    this.storage = new Storage(options.storage);
+    if (options.storage) {
+      this.storage = new Storage(options.storage);
+    }
   }
 
   /**
@@ -138,7 +140,7 @@ export class Sdk implements ISdk {
    */
   public joinAccount(accountEnsName: string): Promise<string> {
     return this.error$.wrapTAsync(async () => {
-      const result: string = null;
+      let result: string = null;
       const accountAttributes = await this.api.getAccount(accountEnsName);
 
       if (!accountAttributes) {
@@ -154,6 +156,15 @@ export class Sdk implements ISdk {
           ...accountAttributes,
           state: AccountStates.Pending,
         };
+
+        result = this.linker.buildActionUrl<LinkerActionPayloads.ICreateAccountDevice>({
+          type: LinkerActionsTypes.CreateAccountDevice,
+          payload: {
+            networkVersion: this.network.version,
+            accountEnsName: this.account.ensName,
+            deviceAddress: this.device.address,
+          },
+        });
       }
 
       return result;
@@ -187,6 +198,10 @@ export class Sdk implements ISdk {
   }
 
   protected async configureStorage(): Promise<void> {
+    if (!this.storage) {
+      return;
+    }
+
     // device
     {
       const key = SdkStorageKeys.Device;

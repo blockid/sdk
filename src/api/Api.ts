@@ -5,6 +5,7 @@ import { merge, Subject } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map } from "rxjs/operators";
 import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
+import { IAppAttributes } from "../app";
 import { ISdkSettings } from "../sdk";
 import { IDevice } from "../device";
 import { ApiConnection } from "./ApiConnection";
@@ -18,7 +19,7 @@ import {
 import { ApiEvents, decodeApiEvent, encodeApiEvent, IApiEvent } from "./events";
 import {
   IApi,
-  IApiConnection,
+  IApiConnection, IApiListData,
   IApiOptions,
   IApiRequest,
   IApiResponse,
@@ -276,6 +277,32 @@ export class Api implements IApi {
       body: {
         signature,
       },
+    });
+
+    return data || null;
+  }
+
+  /**
+   * gets apps
+   * @param page
+   */
+  public async getApps(page: number = 0): Promise<IApiListData<IAppAttributes>> {
+    const { data } = await this.call<any, IApiListData<IAppAttributes>>({
+      method: "GET",
+      path: `app?page=${page}`,
+    });
+
+    return data || null;
+  }
+
+  /**
+   * get app
+   * @param appNameOrAddress
+   */
+  public async getApp(appNameOrAddress: string): Promise<IAppAttributes> {
+    const { data } = await this.call<any, IAppAttributes>({
+      method: "GET",
+      path: `app/${appNameOrAddress}`,
     });
 
     return data || null;
