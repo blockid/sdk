@@ -1,6 +1,4 @@
 export enum AccountStates {
-  Pending = "PENDING",
-  Reserved = "RESERVED",
   Created = "CREATED",
   Deploying = "DEPLOYING",
   Deployed = "DEPLOYED",

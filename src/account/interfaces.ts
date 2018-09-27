@@ -1,17 +1,13 @@
 import { IBN } from "bn.js";
-import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
+import { IAttributesProxySubject } from "rxjs-addons";
 import { IAppAttributes } from "../app";
 import { IDeviceAttributes } from "../device";
 import { AccountStates, AccountDeviceStates } from "./constants";
 
 export interface IAccount extends IAttributesProxySubject<IAccountAttributes> {
-  state?: AccountStates;
-  state$?: TUniqueBehaviorSubject<AccountStates>;
-  address?: string;
-  address$?: TUniqueBehaviorSubject<string>;
+  salt?: number;
   ensName?: string;
-  ensName$?: TUniqueBehaviorSubject<string>;
-  verify(): Promise<void>;
+  updateLocalAttributes(attributes: Partial<IAccountAttributes>): void;
 }
 
 export interface IAccountOptions {
@@ -19,12 +15,10 @@ export interface IAccountOptions {
 }
 
 export interface IAccountAttributes {
-  salt?: number;
+  salt: number;
   state: AccountStates;
   address?: string;
   ensName: string;
-  deviceMessageSignature?: Buffer;
-  guardianMessageSignature?: Buffer;
   updatedAt?: Date;
 }
 

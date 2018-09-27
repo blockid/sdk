@@ -1,4 +1,4 @@
-import { Type, BufferReader } from "protobufjs";
+import { Type, Reader } from "protobufjs";
 import { anyToBuffer } from "eth-utils";
 import {
   ApiEventsPayloadProtoTypeNames,
@@ -75,7 +75,7 @@ export function decodeApiEvent<T = any>(data: Buffer): IApiEvent<T> {
       data.length > 1
     ) {
       try {
-        const reader = new BufferReader(data.slice(1));
+        const reader = new Reader(data.slice(1));
         result.payload = payloadProtoType.decode(reader) as any;
       } catch (err) {
         result.payload = null;

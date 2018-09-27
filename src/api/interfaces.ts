@@ -21,8 +21,8 @@ export interface IApi {
   getAccount(accountEnsName: string): Promise<IAccountAttributes>;
   getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]>;
   getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes>;
-  reserveAccount(accountEnsName: string): Promise<IAccountAttributes>;
-  createAccount(accountEnsName: string, signature: Buffer): Promise<IAccountAttributes>;
+  createAccount(accountEnsName: string): Promise<IAccountAttributes>;
+  getAccountGuardianDeploymentSignature(accountEnsName: string, signature: Buffer): Promise<Buffer>;
   getApps(page?: number): Promise<IApiListData<IAppAttributes>>;
   getApp(appNameOrAddress: string): Promise<IAppAttributes>;
 }
@@ -36,9 +36,7 @@ export interface IApiOptions {
 }
 
 export interface IApiConnection extends IAttributesProxySubject<IApiConnectionAttributes> {
-  state$?: TUniqueBehaviorSubject<ApiConnectionStates>;
   state?: ApiConnectionStates;
-  muted$?: TUniqueBehaviorSubject<boolean>;
   muted?: boolean;
   data$: Subject<Buffer>;
   error$: IErrorSubject;
@@ -49,9 +47,8 @@ export interface IApiConnection extends IAttributesProxySubject<IApiConnectionAt
 }
 
 export interface IApiSession extends IAttributesProxySubject<IApiSessionAttributes> {
-  token?: string;
   state$?: TUniqueBehaviorSubject<ApiSessionStates>;
-  state?: ApiSessionStates;
+  token?: string;
   verified: boolean;
   signHash(hash: Buffer): Promise<{
     signer: string;

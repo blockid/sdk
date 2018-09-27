@@ -8,12 +8,8 @@ import { NetworkStates, NetworkTypes } from "./constants";
 export interface INetwork extends IAttributesProxySubject<INetworkAttributes> {
   version$?: TUniqueBehaviorSubject<number>;
   version?: number;
-  name$?: TUniqueBehaviorSubject<string>;
-  name?: string;
   type$?: TUniqueBehaviorSubject<NetworkTypes>;
-  type?: NetworkTypes;
   state$?: TUniqueBehaviorSubject<NetworkStates>;
-  state?: NetworkStates;
   detectType(): Promise<NetworkTypes>;
   detectVersion(): Promise<number>;
   getPrimaryAccount(): Promise<string>;

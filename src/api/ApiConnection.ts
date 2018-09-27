@@ -1,14 +1,28 @@
 import { Subject } from "rxjs";
-import { AttributesProxySubject, ErrorSubject } from "rxjs-addons";
+import { AttributesProxySubject, ErrorSubject, TAttributesSchema } from "rxjs-addons";
 import { ApiConnectionStates } from "./constants";
 import { IApiConnection, IApiConnectionAttributes } from "./interfaces";
+
+const attributesSchema: TAttributesSchema<IApiConnectionAttributes> = {
+  state: {
+    getter: true,
+  },
+  muted: {
+    setter: true,
+    getter: true,
+  },
+};
 
 /**
  * Api connection
  */
 export class ApiConnection extends AttributesProxySubject<IApiConnectionAttributes> implements IApiConnection {
 
-  private static prepareAttributes(attributes: IApiConnectionAttributes): IApiConnectionAttributes {
+  /**
+   * prepares attributes
+   * @param attributes
+   */
+  public static prepareAttributes(attributes: IApiConnectionAttributes = null): IApiConnectionAttributes {
     let result: IApiConnectionAttributes = {
       state: ApiConnectionStates.Closed,
       muted: true,
@@ -41,10 +55,7 @@ export class ApiConnection extends AttributesProxySubject<IApiConnectionAttribut
    */
   constructor() {
     super(null, {
-      schema: {
-        state: true,
-        muted: true,
-      },
+      schema: attributesSchema,
       prepare: ApiConnection.prepareAttributes,
     });
 

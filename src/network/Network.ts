@@ -4,7 +4,7 @@ import * as BN from "bn.js";
 import { anyToBuffer, anyToHex, sha3, targetToAddress } from "eth-utils";
 import * as Eth from "ethjs";
 import { ICallOptions, ISendTransactionOptions } from "ethjs";
-import { AttributesProxySubject } from "rxjs-addons";
+import { AttributesProxySubject, TAttributesSchema } from "rxjs-addons";
 import { NETWORK_NAMES, NetworkStates, NetworkTypes, NetworkVersions } from "./constants";
 import {
   INetwork,
@@ -17,12 +17,30 @@ import {
 } from "./interfaces";
 import { NetworkProvider } from "./NetworkProvider";
 
+const attributesSchema: TAttributesSchema<INetworkAttributes> = {
+  version: {
+    getter: true,
+    subject: true,
+  },
+  type: {
+    subject: true,
+  },
+  state: {
+    subject: true,
+  },
+};
+
 /**
  * Network
  */
 export class Network extends AttributesProxySubject<INetworkAttributes> implements INetwork {
 
-  private static prepareAttributes(attributes: INetworkAttributes, oldAttributes: INetworkAttributes): INetworkAttributes {
+  /**
+   * prepares attributes
+   * @param attributes
+   * @param oldAttributes
+   */
+  public static prepareAttributes(attributes: INetworkAttributes = null, oldAttributes: INetworkAttributes = null): INetworkAttributes {
     let result: INetworkAttributes = {
       version: null,
       name: null,
@@ -39,6 +57,14 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
       };
 
       const type = Network.versionToType(result.version);
+
+      if (
+        oldAttributes &&
+        oldAttributes.state === NetworkStates.Supported &&
+        oldAttributes.type === type
+      ) {
+        result.state = NetworkStates.Supported;
+      }
 
       result = {
         ...result,
@@ -84,12 +110,7 @@ export class Network extends AttributesProxySubject<INetworkAttributes> implemen
    */
   constructor(options: INetworkOptions = null) {
     super(null, {
-      schema: {
-        version: true,
-        type: true,
-        name: true,
-        state: true,
-      },
+      schema: attributesSchema,
       prepare: Network.prepareAttributes,
     });
 

@@ -4,10 +4,16 @@ import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map, switchMap } from "rxjs/operators";
 import { Account, IAccount, IAccountAttributes } from "../account";
 import { AccountStates } from "../account/constants";
-import { Api, ApiSessionStates, IApi } from "../api";
+import { Api, ApiEvents, ApiSessionStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
-import { ILinker, Linker, LinkerActionPayloads, LinkerActionsTypes } from "../linker";
+import {
+  ILinker,
+  Linker,
+  LinkerActionPayloads,
+  LinkerActionsTypes,
+  LinkerTargetTypes,
+} from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
 import { IStorage, Storage } from "../storage";
@@ -37,7 +43,7 @@ export class Sdk implements ISdk {
 
   private settings$ = new UniqueBehaviorSubject<ISdkSettings>(null);
 
-  private storage: IStorage = null;
+  private readonly storage: IStorage = null;
 
   /**
    * constructor
@@ -58,8 +64,9 @@ export class Sdk implements ISdk {
     this.linker = new Linker(options.linker);
     this.device = new Device(this.network);
     this.api = new Api(this.device, options.api);
-    this.registry = new Registry(this.api, this.device, this.network);
     this.account = new Account(this.api, this.device, this.network, options.account);
+    this.registry = new Registry(this.account, this.api, this.device, this.network);
+
     if (options.storage) {
       this.storage = new Storage(options.storage);
     }
@@ -125,7 +132,7 @@ export class Sdk implements ISdk {
   }
 
   /**
-   * check if account exists
+   * lookup account
    * @param accountEnsName
    */
   public accountExists(accountEnsName: string): Promise<boolean> {
@@ -152,13 +159,12 @@ export class Sdk implements ISdk {
       if (accountDeviceAttributes) {
         this.account.attributes = accountAttributes;
       } else {
-        this.account.attributes = {
-          ...accountAttributes,
-          state: AccountStates.Pending,
-        };
-
         result = this.linker.buildActionUrl<LinkerActionPayloads.ICreateAccountDevice>({
           type: LinkerActionsTypes.CreateAccountDevice,
+          from: {
+            type: LinkerTargetTypes.Device,
+            data: this.device.address,
+          },
           payload: {
             networkVersion: this.network.version,
             accountEnsName: this.account.ensName,
@@ -177,23 +183,32 @@ export class Sdk implements ISdk {
    */
   public createAccount(accountEnsName: string): Promise<void> {
     return this.error$.wrapTAsync(async () => {
-      let accountAttributes = await this.api.reserveAccount(accountEnsName);
+      const accountAttributes = await this.api.createAccount(accountEnsName);
 
       if (!accountAttributes) {
         return;
       }
 
       this.account.attributes = accountAttributes;
+    });
+  }
 
-      const signature = await this.registry.buildCreationSignature(accountEnsName);
+  /**
+   * deploys account
+   */
+  public deployAccount(): Promise<void> {
+    return this.error$.wrapTAsync(async () => {
+      const deviceSignature = await this.registry.buildAccountDeploymentSignature();
+      const guardianSignature = await this.api.getAccountGuardianDeploymentSignature(
+        this.account.ensName,
+        deviceSignature,
+      );
 
-      accountAttributes = await this.api.createAccount(accountEnsName, signature);
-
-      if (!accountAttributes) {
-        return;
+      if (await this.registry.deployAccount(deviceSignature, guardianSignature)) {
+        this.account.updateLocalAttributes({
+          state: AccountStates.Deploying,
+        });
       }
-
-      this.account.attributes = accountAttributes;
     });
   }
 
@@ -273,6 +288,35 @@ export class Sdk implements ISdk {
         filter((state) => state === ApiSessionStates.Verified),
         switchMap(() => from(this.error$.wrapTAsync(async () => {
           //
+        }))),
+      )
+      .subscribe();
+
+    this
+      .api
+      .event$
+      .pipe(
+        switchMap(({ type, payload }) => from(this.error$.wrapTAsync(async () => {
+          switch (type) {
+            case ApiEvents.Types.ConnectionMuted:
+              this.api.connection.muted = true;
+              break;
+
+            case ApiEvents.Types.ConnectionUnMuted:
+              this.api.connection.muted = false;
+              break;
+
+            case ApiEvents.Types.AccountUpdated:
+              const { ensName } = payload as ApiEvents.Payloads.IAccount;
+              if (this.account.ensName === ensName) {
+                const attributes = await this.api.getAccount(ensName);
+
+                if (attributes) {
+                  this.account.attributes = attributes;
+                }
+              }
+              break;
+          }
         }))),
       )
       .subscribe();

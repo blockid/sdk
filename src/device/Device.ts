@@ -1,6 +1,6 @@
 import { IBN } from "bn.js";
 import * as EthereumTx from "ethereumjs-tx";
-import { AttributesProxySubject } from "rxjs-addons";
+import { AttributesProxySubject, TAttributesSchema } from "rxjs-addons";
 import {
   verifyPrivateKey,
   verifyPublicKey,
@@ -14,13 +14,29 @@ import { INetwork, INetworkTransactionOptions } from "../network";
 import { IDevice, IDeviceAttributes } from "./interfaces";
 import { errDeviceUnknownAddress } from "./errors";
 
+const attributesSchema: TAttributesSchema<IDeviceAttributes> = {
+  address: {
+    getter: true,
+    subject: true,
+  },
+};
+
 /**
  * Device
  */
 export class Device extends AttributesProxySubject<IDeviceAttributes> implements IDevice {
 
-  private static prepareAttributes(attributes: IDeviceAttributes): IDeviceAttributes {
-    let result: IDeviceAttributes = null;
+  /**
+   * prepares attributes
+   * @param attributes
+   */
+  public static prepareAttributes(attributes: IDeviceAttributes = null): IDeviceAttributes {
+    let result: IDeviceAttributes = {
+      address: null,
+      publicKey: null,
+      privateKey: null,
+    };
+
     if (attributes) {
       let { privateKey, publicKey, address } = attributes;
 
@@ -59,16 +75,10 @@ export class Device extends AttributesProxySubject<IDeviceAttributes> implements
   /**
    * constructor
    * @param network
-   * @param attributes
    */
-  constructor(private network: INetwork, attributes: IDeviceAttributes = null) {
-    super(attributes, {
-      schema: {
-        address: true,
-        publicKey: {
-          getter: true,
-        },
-      },
+  constructor(private network: INetwork) {
+    super(null, {
+      schema: attributesSchema,
       prepare: Device.prepareAttributes,
     });
   }

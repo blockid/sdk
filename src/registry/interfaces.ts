@@ -1,9 +1,8 @@
-import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
+import { IAttributesProxySubject } from "rxjs-addons";
 
 export interface IRegistry extends IAttributesProxySubject<IRegistryAttributes> {
-  supportedEnsRootNodesNames$?: TUniqueBehaviorSubject<string[]>;
-  supportedEnsRootNodesNames?: string[];
-  buildCreationSignature(accountEnsName: string): Promise<Buffer>;
+  buildAccountDeploymentSignature(): Promise<Buffer>;
+  deployAccount(deviceSignature: Buffer, guardianSignature: Buffer): Promise<boolean>;
 }
 
 export interface IRegistryAttributes {

@@ -5,7 +5,6 @@ import { IAttributesProxySubject, TUniqueBehaviorSubject } from "rxjs-addons";
 export interface IDevice extends IAttributesProxySubject<IDeviceAttributes> {
   address$?: TUniqueBehaviorSubject<string>;
   address?: string;
-  publicKey?: Buffer;
   getBalance(): Promise<IBN>;
   getTransactionCount(): Promise<IBN>;
   signPersonalMessage(message: Buffer | string): Promise<Buffer>;

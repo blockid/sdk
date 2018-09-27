@@ -3,7 +3,7 @@ import "cross-fetch/polyfill";
 import { jsonReplacer, jsonReviver } from "eth-utils";
 import { merge, Subject } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
-import { filter, map } from "rxjs/operators";
+import { map } from "rxjs/operators";
 import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
 import { IAppAttributes } from "../app";
 import { ISdkSettings } from "../sdk";
@@ -98,17 +98,6 @@ export class Api implements IApi {
         map((data) => decodeApiEvent(data)),
       )
       .subscribe(this.event$);
-
-    this
-      .event$
-      .pipe(
-        filter(({ type }) => (
-          type === ApiEvents.Types.ConnectionMuted ||
-          type === ApiEvents.Types.ConnectionUnMuted
-        )),
-        map(({ type }) => type === ApiEvents.Types.ConnectionMuted),
-      )
-      .subscribe(this.connection.muted$);
 
     // auto auth
     merge(this.options$, device.address$)
@@ -246,10 +235,10 @@ export class Api implements IApi {
   }
 
   /**
-   * reserves account
+   * creates account
    * @param accountEnsName
    */
-  public async reserveAccount(accountEnsName: string): Promise<IAccountAttributes> {
+  public async createAccount(accountEnsName: string): Promise<IAccountAttributes> {
     const { data } = await this.call<{
       ensName: string,
     }, IAccountAttributes>({
@@ -264,14 +253,14 @@ export class Api implements IApi {
   }
 
   /**
-   * creates account
+   * gets account guardian deployment signature
    * @param accountEnsName
    * @param signature
    */
-  public async createAccount(accountEnsName: string, signature: Buffer): Promise<IAccountAttributes> {
+  public async getAccountGuardianDeploymentSignature(accountEnsName: string, signature: Buffer): Promise<Buffer> {
     const { data } = await this.call<{
       signature: Buffer,
-    }, IAccountAttributes>({
+    }, Buffer>({
       method: "PUT",
       path: `account/${accountEnsName}`,
       body: {
@@ -319,6 +308,8 @@ export class Api implements IApi {
       method,
       headers: new Headers({
         "Content-Type": "application/json",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
         "X-Session-Token": this.session.token || "",
       }),
       ...(

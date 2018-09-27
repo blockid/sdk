@@ -1,14 +1,27 @@
-import { AttributesProxySubject } from "rxjs-addons";
+import { AttributesProxySubject, TAttributesSchema } from "rxjs-addons";
 import { IDevice } from "../device";
 import { ApiSessionStates } from "./constants";
 import { IApiSession, IApiSessionAttributes } from "./interfaces";
+
+const attributesSchema: TAttributesSchema<IApiSessionAttributes> = {
+  state: {
+    subject: true,
+  },
+  token: {
+    getter: true,
+  },
+};
 
 /**
  * Api session
  */
 export class ApiSession extends AttributesProxySubject<IApiSessionAttributes> implements IApiSession {
 
-  private static prepareAttributes(attributes: IApiSessionAttributes): IApiSessionAttributes {
+  /**
+   * prepares attributes
+   * @param attributes
+   */
+  public static prepareAttributes(attributes: IApiSessionAttributes = null): IApiSessionAttributes {
     let result: IApiSessionAttributes = {
       state: ApiSessionStates.Destroyed,
       token: null,
@@ -30,13 +43,7 @@ export class ApiSession extends AttributesProxySubject<IApiSessionAttributes> im
    */
   constructor(private device: IDevice) {
     super(null, {
-      schema: {
-        state: true,
-        token: {
-          setter: true,
-          getter: true,
-        },
-      },
+      schema: attributesSchema,
       prepare: ApiSession.prepareAttributes,
     });
   }

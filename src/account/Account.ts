@@ -1,14 +1,52 @@
-import { AttributesProxySubject } from "rxjs-addons";
+import { AttributesProxySubject, TAttributesSchema } from "rxjs-addons";
 import { SharedAccountContact, ISharedAccountContact } from "../contract";
 import { IApi } from "../api";
 import { IDevice } from "../device";
 import { INetwork } from "../network";
 import { IAccount, IAccountOptions, IAccountAttributes } from "./interfaces";
 
+const attributesSchema: TAttributesSchema<IAccountAttributes> = {
+  salt: {
+    getter: true,
+  },
+  ensName: {
+    getter: true,
+  },
+};
+
 /**
  * Account
  */
 export class Account extends AttributesProxySubject<IAccountAttributes> implements IAccount {
+
+  /**
+   * prepares attributes
+   * @param attributes
+   * @param oldAttributes
+   */
+  public static prepareAttributes(attributes: IAccountAttributes = null, oldAttributes: IAccountAttributes = null): IAccountAttributes {
+    let result: IAccountAttributes = {
+      salt: null,
+      state: null,
+      ensName: null,
+      address: null,
+      updatedAt: null,
+    };
+
+    if (attributes) {
+      result = {
+        ...result,
+        ...(oldAttributes || {}),
+        ...attributes,
+      };
+
+      if (oldAttributes && oldAttributes.updatedAt > result.updatedAt) {
+        result = oldAttributes;
+      }
+    }
+
+    return result;
+  }
 
   private options: IAccountOptions;
 
@@ -23,11 +61,8 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
    */
   constructor(private api: IApi, private device: IDevice, private network: INetwork, options: IAccountOptions = null) {
     super(null, {
-      schema: {
-        state: true,
-        address: true,
-        ensName: true,
-      },
+      schema: attributesSchema,
+      prepare: Account.prepareAttributes,
     });
 
     this.options = {
@@ -42,24 +77,10 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
       .subscribe(this.contract.address$);
   }
 
-  public async verify(): Promise<void> {
-    const ensName = this.getAttribute<string>("ensName");
-
-    if (!ensName) {
-      return;
-    }
-    const accountAttributes = await this.api.getAccount(ensName);
-
-    if (!accountAttributes) {
-      this.attributes = null;
-      return;
-    }
-
-    const accountDeviceAttributes = await this.api.getAccountDevice(ensName, this.device.address);
-
-    if (!accountDeviceAttributes) {
-      this.attributes = null;
-      return;
-    }
+  public updateLocalAttributes(attributes: Partial<IAccountAttributes>): void {
+    this.updateAttributes({
+      ...attributes,
+      updatedAt: new Date(),
+    });
   }
 }

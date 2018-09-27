@@ -25,6 +25,7 @@ export interface ISdk {
   accountExists(accountEnsName: string): Promise<boolean>;
   joinAccount(accountEnsName: string): Promise<string>;
   createAccount(accountEnsName: string): Promise<void>;
+  deployAccount(): Promise<void>;
 }
 
 export interface ISdkOptions {
