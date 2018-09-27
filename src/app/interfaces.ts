@@ -1,7 +1,12 @@
+import { AppTypes } from "./constants";
+
 export interface IAppAttributes {
-  address: string;
   name: string;
-  description: string;
-  callbackUrl: string;
-  updatedAt: Date;
+  type?: AppTypes;
+  address?: string;
+  title?: string;
+  description?: string;
+  url?: string;
+  callbackUrl?: string;
+  updatedAt?: Date;
 }
