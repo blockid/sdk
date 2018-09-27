@@ -1,56 +1,15 @@
+import { jsonReplacer, jsonReviver } from "eth-utils";
 import { parse, stringify } from "querystring";
-import { filter, map } from "rxjs/operators";
 import { UniqueBehaviorSubject } from "rxjs-addons";
-import { jsonReviver, jsonReplacer } from "eth-utils";
+import { filter, map } from "rxjs/operators";
+import { IAppAttributes, internalApp } from "../app";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
-import { ILinker, ILinkerAction, ILinkerApp, ILinkerOptions, ILinkerTarget } from "./interfaces";
-
-const UNKNOWN_APP: ILinkerApp = {
-  name: "",
-  callbackUrl: "",
-};
+import { ILinker, ILinkerAction, ILinkerOptions, ILinkerTarget } from "./interfaces";
 
 /**
  * Linker
  */
 export class Linker implements ILinker {
-
-  private static decodeActionUrl(url: string): ILinkerAction {
-    let result: ILinkerAction;
-
-    try {
-      let parts = url.split("://");
-      if (parts.length === 2) {
-        const app: ILinkerApp = {
-          name: parts[ 0 ],
-        };
-
-        parts = parts[ 1 ].split("?");
-
-        app.callbackUrl = parts[ 0 ];
-
-        const query = parse(parts[ 1 ]);
-        const type = query.type as LinkerActionsTypes;
-        const from = JSON.parse(query.from as string, jsonReviver) as ILinkerTarget;
-        const payload: any = JSON.parse(query.payload as string, jsonReviver);
-
-        result = {
-          type,
-          to: {
-            type: LinkerTargetTypes.App,
-            data: app,
-          },
-          from,
-          payload,
-        };
-
-      }
-    } catch (err) {
-      result = null;
-    }
-
-    return result;
-  }
 
   /**
    * incoming url subject
@@ -80,22 +39,21 @@ export class Linker implements ILinker {
    */
   constructor(options: ILinkerOptions = null) {
     this.options = {
-      app: UNKNOWN_APP,
       ...(options || {}),
-    };
-
-    this.options.app = {
-      ...UNKNOWN_APP,
-      ...this.options.app,
     };
 
     this
       .incomingUrl$
       .pipe(
         filter((url) => !!url),
-        map(Linker.decodeActionUrl),
+        map((url) => this.decodeActionUrl(url)),
+        filter((action) => !!action),
       )
       .subscribe(this.incomingAction$);
+
+    if (this.options.autoAcceptActions) {
+      this.incomingAction$.subscribe(this.acceptedAction$);
+    }
   }
 
   /**
@@ -117,30 +75,24 @@ export class Linker implements ILinker {
   /**
    * builds action url
    * @param action
+   * @param toApp
    */
-  public buildActionUrl<F = any, P = any>(action: ILinkerAction<ILinkerApp, F, P>): string {
+  public buildActionUrl<P = any, F = any>(action: ILinkerAction<P, F>, toApp: IAppAttributes = internalApp): string {
     let result: string = null;
 
     const { app } = this.options;
-    let { to, from } = action;
+    let { from } = action;
     const { type, payload } = action;
 
-    if (!to) {
-      to = {
-        type: LinkerTargetTypes.App,
-        data: UNKNOWN_APP,
-      } as ILinkerTarget;
-    }
-
-    if (!from) {
+    if (!from && app) {
       from = {
         type: LinkerTargetTypes.App,
         data: app,
-      } as ILinkerTarget;
+      } as any;
     }
 
-    if (to.type === LinkerTargetTypes.App) {
-      const { name, callbackUrl } = to.data as ILinkerApp;
+    if (from && toApp && toApp.callbackUrl) {
+      const { callbackUrl } = toApp;
 
       const query = {
         type,
@@ -148,9 +100,40 @@ export class Linker implements ILinker {
         payload: JSON.stringify(payload, jsonReplacer),
       };
 
-      result = `${name}://${callbackUrl || ""}?${stringify(query)}`;
+      result = `${callbackUrl}?${stringify(query)}`;
     }
 
     return result;
   }
+
+  private decodeActionUrl(url: string): ILinkerAction {
+    let result: ILinkerAction;
+
+    try {
+      const { callbackUrl } = this.options.app;
+      const parts = url.split("?");
+
+      if (
+        parts[ 0 ] === callbackUrl &&
+        parts.length === 2
+      ) {
+        const query = parse(parts[ 1 ]);
+        const type = query.type as LinkerActionsTypes;
+        const from = JSON.parse(query.from as string, jsonReviver) as ILinkerTarget;
+        const payload: any = JSON.parse(query.payload as string, jsonReviver);
+
+        result = {
+          type,
+          from,
+          payload,
+        };
+
+      }
+    } catch (err) {
+      result = null;
+    }
+
+    return result;
+  }
+
 }

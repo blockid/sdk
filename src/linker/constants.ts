@@ -1,10 +1,9 @@
 export enum LinkerActionsTypes {
-  SignPersonalMessage = "SIGN_PERSONAL_MESSAGE",
-  SendAddIdentityMember = "SEND_ADD_IDENTITY_MEMBER",
+  CreateAccountDevice = "CREATE_ACCOUNT_DEVICE",
+  AccountDeviceCreated = "ACCOUNT_DEVICE_CREATED",
 }
 
 export enum LinkerTargetTypes {
   App = "APP",
   Device = "DEVICE",
-  Identity = "IDENTITY",
 }

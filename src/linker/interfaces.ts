@@ -1,4 +1,5 @@
 import { TUniqueBehaviorSubject } from "rxjs-addons";
+import { IAppAttributes } from "../app";
 import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
 
 export interface ILinker {
@@ -8,17 +9,12 @@ export interface ILinker {
   acceptedAction$: TUniqueBehaviorSubject<ILinkerAction>;
   acceptAction(action?: ILinkerAction): void;
   rejectAction(): void;
-  buildActionUrl<F = any, P = any>(action: ILinkerAction<ILinkerApp, F, P>): string;
+  buildActionUrl<P = any, F = any>(action: ILinkerAction<P, F>, toApp?: IAppAttributes): string;
 }
 
 export interface ILinkerOptions {
-  app?: ILinkerApp;
-}
-
-export interface ILinkerApp {
-  name: string;
-  description?: string;
-  callbackUrl?: string;
+  app?: IAppAttributes;
+  autoAcceptActions?: boolean;
 }
 
 export interface ILinkerTarget<T = any> {
@@ -26,9 +22,8 @@ export interface ILinkerTarget<T = any> {
   data: T;
 }
 
-export interface ILinkerAction<T = any, F = any, P = any> {
+export interface ILinkerAction<P = any, F = any> {
   type: LinkerActionsTypes;
-  to?: ILinkerTarget<T>;
   from?: ILinkerTarget<F>;
   payload: P;
 }
