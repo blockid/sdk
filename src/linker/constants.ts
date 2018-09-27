@@ -3,7 +3,7 @@ export enum LinkerActionsTypes {
   AccountDeviceCreated = "ACCOUNT_DEVICE_CREATED",
 }
 
-export enum LinkerTargetTypes {
+export enum LinkerActionSenderTypes {
   App = "APP",
   Device = "DEVICE",
 }

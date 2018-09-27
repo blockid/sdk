@@ -40,7 +40,11 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
         ...attributes,
       };
 
-      if (oldAttributes && oldAttributes.updatedAt > result.updatedAt) {
+      if (
+        oldAttributes &&
+        oldAttributes.updatedAt &&
+        result.updatedAt &&
+        oldAttributes.updatedAt.getTime() > result.updatedAt.getTime()) {
         result = oldAttributes;
       }
     }
@@ -77,6 +81,10 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
       .subscribe(this.contract.address$);
   }
 
+  /**
+   * updates local attributes
+   * @param attributes
+   */
   public updateLocalAttributes(attributes: Partial<IAccountAttributes>): void {
     this.updateAttributes({
       ...attributes,

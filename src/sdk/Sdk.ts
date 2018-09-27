@@ -2,7 +2,14 @@ import { generateRandomPrivateKey } from "eth-utils";
 import { from } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map, switchMap } from "rxjs/operators";
-import { Account, IAccount, IAccountAttributes } from "../account";
+import {
+  Account,
+  IAccount,
+  IAccountDevice,
+  IAccountAttributes,
+  AccountDevice,
+  IAccountDeviceAttributes,
+} from "../account";
 import { AccountStates } from "../account/constants";
 import { Api, ApiEvents, ApiSessionStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
@@ -12,7 +19,6 @@ import {
   Linker,
   LinkerActionPayloads,
   LinkerActionsTypes,
-  LinkerTargetTypes,
 } from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
@@ -28,6 +34,8 @@ export class Sdk implements ISdk {
   public error$ = new ErrorSubject();
 
   public account: IAccount;
+
+  public accountDevice: IAccountDevice;
 
   public api: IApi;
 
@@ -61,11 +69,12 @@ export class Sdk implements ISdk {
 
     this.network = new Network(options.network);
     this.ens = new Ens(this.network);
-    this.linker = new Linker(options.linker);
     this.device = new Device(this.network);
+    this.linker = new Linker(this.device, options.linker);
     this.api = new Api(this.device, options.api);
     this.account = new Account(this.api, this.device, this.network, options.account);
     this.registry = new Registry(this.account, this.api, this.device, this.network);
+    this.accountDevice = new AccountDevice();
 
     if (options.storage) {
       this.storage = new Storage(options.storage);
@@ -158,13 +167,10 @@ export class Sdk implements ISdk {
 
       if (accountDeviceAttributes) {
         this.account.attributes = accountAttributes;
+        this.accountDevice.attributes = accountDeviceAttributes;
       } else {
         result = this.linker.buildActionUrl<LinkerActionPayloads.ICreateAccountDevice>({
           type: LinkerActionsTypes.CreateAccountDevice,
-          from: {
-            type: LinkerTargetTypes.Device,
-            data: this.device.address,
-          },
           payload: {
             networkVersion: this.network.version,
             accountEnsName: this.account.ensName,
@@ -189,7 +195,14 @@ export class Sdk implements ISdk {
         return;
       }
 
+      const accountDeviceAttributes = await this.api.getAccountDevice(accountEnsName, this.device.address);
+
+      if (!accountDeviceAttributes) {
+        return;
+      }
+
       this.account.attributes = accountAttributes;
+      this.accountDevice.attributes = accountDeviceAttributes;
     });
   }
 
@@ -210,6 +223,14 @@ export class Sdk implements ISdk {
         });
       }
     });
+  }
+
+  /**
+   * resets account
+   */
+  public resetAccount(): void {
+    this.account.attributes = null;
+    this.accountDevice.attributes = null;
   }
 
   protected async configureStorage(): Promise<void> {
@@ -244,6 +265,23 @@ export class Sdk implements ISdk {
 
       this
         .account
+        .attributes$
+        .subscribe((attributes) => this
+          .error$
+          .wrapAsync(() => this.storage.setDoc(key, attributes)),
+        );
+    }
+
+    // account device
+    {
+      const key = SdkStorageKeys.AccountDevice;
+      const attributes = await this.storage.getDoc<IAccountDeviceAttributes>(key);
+      if (attributes) {
+        this.accountDevice.attributes = attributes;
+      }
+
+      this
+        .accountDevice
         .attributes$
         .subscribe((attributes) => this
           .error$
@@ -309,10 +347,12 @@ export class Sdk implements ISdk {
             case ApiEvents.Types.AccountUpdated:
               const { ensName } = payload as ApiEvents.Payloads.IAccount;
               if (this.account.ensName === ensName) {
-                const attributes = await this.api.getAccount(ensName);
+                const accountAttributes = await this.api.getAccount(ensName);
+                const accountDeviceAttributes = await this.api.getAccountDevice(ensName, this.device.address);
 
-                if (attributes) {
-                  this.account.attributes = attributes;
+                if (accountAttributes && accountDeviceAttributes) {
+                  this.account.attributes = accountAttributes;
+                  this.accountDevice.attributes = accountDeviceAttributes;
                 }
               }
               break;

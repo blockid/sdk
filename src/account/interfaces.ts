@@ -10,6 +10,10 @@ export interface IAccount extends IAttributesProxySubject<IAccountAttributes> {
   updateLocalAttributes(attributes: Partial<IAccountAttributes>): void;
 }
 
+export interface IAccountDevice extends IAttributesProxySubject<IAccountDeviceAttributes> {
+  limit?: IBN;
+}
+
 export interface IAccountOptions {
   useGasRelay: boolean;
 }

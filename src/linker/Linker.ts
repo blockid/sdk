@@ -3,8 +3,9 @@ import { parse, stringify } from "querystring";
 import { UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map } from "rxjs/operators";
 import { IAppAttributes, internalApp } from "../app";
-import { LinkerActionsTypes, LinkerTargetTypes } from "./constants";
-import { ILinker, ILinkerAction, ILinkerOptions, ILinkerTarget } from "./interfaces";
+import { IDevice } from "../device";
+import { LinkerActionsTypes, LinkerActionSenderTypes } from "./constants";
+import { ILinker, ILinkerAction, ILinkerOptions, ILinkerActionSender } from "./interfaces";
 
 /**
  * Linker
@@ -15,11 +16,6 @@ export class Linker implements ILinker {
    * incoming url subject
    */
   public incomingUrl$ = new UniqueBehaviorSubject<string>();
-
-  /**
-   * outgoing url subject
-   */
-  public outgoingUrl$ = new UniqueBehaviorSubject<string>();
 
   /**
    * incoming action subject
@@ -35,9 +31,10 @@ export class Linker implements ILinker {
 
   /**
    * constructor
+   * @param device
    * @param options
    */
-  constructor(options: ILinkerOptions = null) {
+  constructor(private device: IDevice, options: ILinkerOptions = null) {
     this.options = {
       ...(options || {}),
     };
@@ -81,26 +78,27 @@ export class Linker implements ILinker {
     let result: string = null;
 
     const { app } = this.options;
-    let { from } = action;
+
     const { type, payload } = action;
 
-    if (!from && app) {
-      from = {
-        type: LinkerTargetTypes.App,
-        data: app,
-      } as any;
-    }
-
-    if (from && toApp && toApp.callbackUrl) {
-      const { callbackUrl } = toApp;
+    if (toApp && toApp.callbackUrl) {
+      const sender: ILinkerActionSender = app
+        ? {
+          type: LinkerActionSenderTypes.App,
+          data: app,
+        }
+        : {
+          type: LinkerActionSenderTypes.Device,
+          data: this.device.address,
+        };
 
       const query = {
         type,
-        from: JSON.stringify(from, jsonReplacer),
+        sender: JSON.stringify(sender, jsonReplacer),
         payload: JSON.stringify(payload, jsonReplacer),
       };
 
-      result = `${callbackUrl}?${stringify(query)}`;
+      result = `${toApp.callbackUrl}?${stringify(query)}`;
     }
 
     return result;
@@ -119,12 +117,12 @@ export class Linker implements ILinker {
       ) {
         const query = parse(parts[ 1 ]);
         const type = query.type as LinkerActionsTypes;
-        const from = JSON.parse(query.from as string, jsonReviver) as ILinkerTarget;
+        const sender = JSON.parse(query.sender as string, jsonReviver) as ILinkerActionSender;
         const payload: any = JSON.parse(query.payload as string, jsonReviver);
 
         result = {
           type,
-          from,
+          sender,
           payload,
         };
 

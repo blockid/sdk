@@ -1,5 +1,5 @@
 import { IErrorSubject } from "rxjs-addons";
-import { IAccount, IAccountOptions } from "../account";
+import { IAccount, IAccountOptions, IAccountDevice } from "../account";
 import { IApi, IApiOptions } from "../api";
 import { IDevice } from "../device";
 import { IEns, IEnsAttributes } from "../ens";
@@ -11,6 +11,7 @@ import { IStorageOptions } from "../storage";
 export interface ISdk {
   error$: IErrorSubject;
   account: IAccount;
+  accountDevice: IAccountDevice;
   api: IApi;
   device: IDevice;
   ens: IEns;
@@ -26,6 +27,7 @@ export interface ISdk {
   joinAccount(accountEnsName: string): Promise<string>;
   createAccount(accountEnsName: string): Promise<void>;
   deployAccount(): Promise<void>;
+  resetAccount(): void;
 }
 
 export interface ISdkOptions {
