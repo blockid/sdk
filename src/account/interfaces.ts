@@ -6,8 +6,10 @@ import { AccountStates, AccountDeviceStates } from "./constants";
 
 export interface IAccount extends IAttributesProxySubject<IAccountAttributes> {
   salt?: number;
+  balance?: IBN;
   ensName?: string;
   updateLocalAttributes(attributes: Partial<IAccountAttributes>): void;
+  revertLocalAttributes(): void;
 }
 
 export interface IAccountDevice extends IAttributesProxySubject<IAccountDeviceAttributes> {
@@ -22,6 +24,7 @@ export interface IAccountAttributes {
   salt: number;
   state: AccountStates;
   address?: string;
+  balance: IBN;
   ensName: string;
   updatedAt?: Date;
 }

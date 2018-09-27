@@ -217,10 +217,12 @@ export class Sdk implements ISdk {
         deviceSignature,
       );
 
-      if (await this.registry.deployAccount(deviceSignature, guardianSignature)) {
-        this.account.updateLocalAttributes({
-          state: AccountStates.Deploying,
-        });
+      this.account.updateLocalAttributes({
+        state: AccountStates.Deploying,
+      });
+
+      if (!(await this.registry.deployAccount(deviceSignature, guardianSignature))) {
+        this.account.revertLocalAttributes();
       }
     });
   }

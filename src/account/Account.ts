@@ -19,6 +19,8 @@ const attributesSchema: TAttributesSchema<IAccountAttributes> = {
  */
 export class Account extends AttributesProxySubject<IAccountAttributes> implements IAccount {
 
+  private localAttributesCache: IAccountAttributes = null;
+
   /**
    * prepares attributes
    * @param attributes
@@ -30,6 +32,7 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
       state: null,
       ensName: null,
       address: null,
+      balance: null,
       updatedAt: null,
     };
 
@@ -39,14 +42,6 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
         ...(oldAttributes || {}),
         ...attributes,
       };
-
-      if (
-        oldAttributes &&
-        oldAttributes.updatedAt &&
-        result.updatedAt &&
-        oldAttributes.updatedAt.getTime() > result.updatedAt.getTime()) {
-        result = oldAttributes;
-      }
     }
 
     return result;
@@ -86,9 +81,19 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
    * @param attributes
    */
   public updateLocalAttributes(attributes: Partial<IAccountAttributes>): void {
+    this.localAttributesCache = this.attributes;
+
     this.updateAttributes({
       ...attributes,
-      updatedAt: new Date(),
     });
+
+  }
+
+  /**
+   * reverts local attributes
+   */
+  public revertLocalAttributes(): void {
+    this.attributes = this.localAttributesCache;
+    this.localAttributesCache = null;
   }
 }
