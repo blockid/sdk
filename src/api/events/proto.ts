@@ -3,6 +3,7 @@ import { Type, Namespace } from "protobufjs";
 export enum ApiEventsPayloadProtoTypeNames {
   Account = "Account",
   AccountDevice = "AccountDevice",
+  SecureAction = "SecureAction",
 }
 
 const apiEventsPayloadProto = Namespace
@@ -30,6 +31,24 @@ const apiEventsPayloadProto = Namespace
             },
           },
         },
+        [ ApiEventsPayloadProtoTypeNames.SecureAction ]: {
+          fields: {
+            signer: {
+              type: "string",
+              id: 1,
+              rule: "optional",
+            },
+            recipient: {
+              type: "string",
+              id: 2,
+              rule: "optional",
+            },
+            signature: {
+              type: "string",
+              id: 3,
+            },
+          },
+        },
       },
     },
   );
@@ -37,4 +56,5 @@ const apiEventsPayloadProto = Namespace
 export const apiEventsPayloadProtoTypes: { [ key: string ]: Type } = {
   Account: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.Account),
   AccountDevice: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.AccountDevice),
+  SecureAction: apiEventsPayloadProto.lookupType(ApiEventsPayloadProtoTypeNames.SecureAction),
 };

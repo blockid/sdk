@@ -14,6 +14,9 @@ export namespace ApiEvents {
     AccountDeviceAdded = 0x21,
     AccountDeviceUpdated = 0x22,
     AccountDeviceRemoved = 0x23,
+
+    // 0x3 - secure action
+    SignedSecureAction = 0x32,
   }
 
   export namespace Payloads {
@@ -25,6 +28,12 @@ export namespace ApiEvents {
     export interface IAccountDevice {
       account: IAccount;
       address: string;
+    }
+
+    export interface ISignedSecureAction {
+      signer?: string;
+      recipient?: string;
+      signature: string;
     }
   }
 }

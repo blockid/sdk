@@ -1,13 +1,14 @@
-import { generateRandomPrivateKey } from "eth-utils";
+import { randomBytes } from "crypto";
+import { generateRandomPrivateKey, recoverAddressFromPersonalMessage } from "eth-utils";
 import { from } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map, switchMap } from "rxjs/operators";
 import {
   Account,
-  IAccount,
-  IAccountDevice,
-  IAccountAttributes,
   AccountDevice,
+  IAccount,
+  IAccountAttributes,
+  IAccountDevice,
   IAccountDeviceAttributes,
 } from "../account";
 import { AccountStates } from "../account/constants";
@@ -16,15 +17,18 @@ import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
 import {
   ILinker,
+  ILinkerAction,
+  ILinkerActionUrls,
   Linker,
   LinkerActionPayloads,
+  LinkerActionSenderTypes,
   LinkerActionsTypes,
 } from "../linker";
 import { INetwork, Network } from "../network";
 import { IRegistry, Registry } from "../registry";
 import { IStorage, Storage } from "../storage";
 import { SdkStorageKeys } from "./constants";
-import { ISdk, ISdkOptions, ISdkSettings } from "./interfaces";
+import { ISdk, ISdkOptions, ISdkSecureAction, ISdkSettings } from "./interfaces";
 
 /**
  * Sdk
@@ -52,6 +56,8 @@ export class Sdk implements ISdk {
   private settings$ = new UniqueBehaviorSubject<ISdkSettings>(null);
 
   private readonly storage: IStorage = null;
+
+  private secureAction: ISdkSecureAction = null;
 
   /**
    * constructor
@@ -94,6 +100,7 @@ export class Sdk implements ISdk {
       await this.configureDevice();
       await this.configureApi();
       await this.configureEns();
+      await this.configureLinker();
       await this.configureNetwork();
       await this.configureRegistry();
 
@@ -154,9 +161,9 @@ export class Sdk implements ISdk {
    * joins account
    * @param accountEnsName
    */
-  public joinAccount(accountEnsName: string): Promise<string> {
+  public joinAccount(accountEnsName: string): Promise<ILinkerActionUrls> {
     return this.error$.wrapTAsync(async () => {
-      let result: string = null;
+      let result: ILinkerActionUrls = null;
       const accountAttributes = await this.api.getAccount(accountEnsName);
 
       if (!accountAttributes) {
@@ -169,12 +176,12 @@ export class Sdk implements ISdk {
         this.account.attributes = accountAttributes;
         this.accountDevice.attributes = accountDeviceAttributes;
       } else {
-        result = this.linker.buildActionUrl<LinkerActionPayloads.ICreateAccountDevice>({
+        result = this.linker.buildActionUrls<LinkerActionPayloads.ICreateAccountDevice>({
           type: LinkerActionsTypes.CreateAccountDevice,
           payload: {
             networkVersion: this.network.version,
-            accountEnsName: this.account.ensName,
             deviceAddress: this.device.address,
+            appName: this.linker.appName,
           },
         });
       }
@@ -211,18 +218,23 @@ export class Sdk implements ISdk {
    */
   public deployAccount(): Promise<void> {
     return this.error$.wrapTAsync(async () => {
-      const deviceSignature = await this.registry.buildAccountDeploymentSignature();
-      const guardianSignature = await this.api.getAccountGuardianDeploymentSignature(
-        this.account.ensName,
-        deviceSignature,
-      );
+      try {
+        this.account.updateLocalAttributes({
+          state: AccountStates.Deploying,
+        });
 
-      this.account.updateLocalAttributes({
-        state: AccountStates.Deploying,
-      });
+        const deviceSignature = await this.registry.buildAccountDeploymentSignature();
+        const guardianSignature = await this.api.getAccountGuardianDeploymentSignature(
+          this.account.ensName,
+          deviceSignature,
+        );
 
-      if (!(await this.registry.deployAccount(deviceSignature, guardianSignature))) {
+        if (!(await this.registry.deployAccount(deviceSignature, guardianSignature))) {
+          this.account.revertLocalAttributes();
+        }
+      } catch (err) {
         this.account.revertLocalAttributes();
+        throw err;
       }
     });
   }
@@ -233,6 +245,38 @@ export class Sdk implements ISdk {
   public resetAccount(): void {
     this.account.attributes = null;
     this.accountDevice.attributes = null;
+  }
+
+  /**
+   * creates secure action url
+   * @param type
+   */
+  public createSecureActionUrl(type: LinkerActionsTypes): string {
+    this.unMuteApiConnection();
+
+    const hash = randomBytes(16);
+
+    this.secureAction = {
+      type,
+      hash,
+    };
+
+    return this.linker.buildActionUrl<LinkerActionPayloads.ISecure>({
+      type: LinkerActionsTypes.Secure,
+      payload: {
+        networkVersion: this.network.version,
+        hash,
+      },
+    }, {
+      senderType: LinkerActionSenderTypes.Device,
+    });
+  }
+
+  /**
+   * destroys secure action
+   */
+  public destroySecureAction(): void {
+    this.muteApiConnection();
   }
 
   protected async configureStorage(): Promise<void> {
@@ -322,12 +366,23 @@ export class Sdk implements ISdk {
 
     this
       .api
+      .connection
+      .muted$
+      .pipe(
+        filter((muted) => muted),
+      )
+      .subscribe(() => {
+        this.secureAction = null;
+      });
+
+    this
+      .api
       .session
       .state$
       .pipe(
         filter((state) => state === ApiSessionStates.Verified),
         switchMap(() => from(this.error$.wrapTAsync(async () => {
-          //
+          // TODO verify
         }))),
       )
       .subscribe();
@@ -346,7 +401,7 @@ export class Sdk implements ISdk {
               this.api.connection.muted = false;
               break;
 
-            case ApiEvents.Types.AccountUpdated:
+            case ApiEvents.Types.AccountUpdated: {
               const { ensName } = payload as ApiEvents.Payloads.IAccount;
               if (this.account.ensName === ensName) {
                 const accountAttributes = await this.api.getAccount(ensName);
@@ -358,6 +413,64 @@ export class Sdk implements ISdk {
                 }
               }
               break;
+            }
+
+            case ApiEvents.Types.AccountDeviceAdded: {
+              const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
+              // TODO
+              break;
+            }
+
+            case ApiEvents.Types.AccountDeviceUpdated: {
+              const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
+              // TODO
+              break;
+            }
+
+            case ApiEvents.Types.AccountDeviceRemoved: {
+              const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
+              // TODO
+              break;
+            }
+
+            case ApiEvents.Types.SignedSecureAction: {
+              try {
+                const { signer, signature } = payload as ApiEvents.Payloads.ISignedSecureAction;
+
+                if (!this.secureAction) {
+                  return;
+                }
+
+                const { type, hash } = this.secureAction;
+
+                if (signer !== recoverAddressFromPersonalMessage(hash, signature)) {
+                  return;
+                }
+
+                switch (type) {
+                  case LinkerActionsTypes.CreateAccountDevice: {
+                    const action: ILinkerAction<LinkerActionPayloads.ICreateAccountDevice> = {
+                      type,
+                      payload: {
+                        networkVersion: this.network.version,
+                        deviceAddress: signer,
+                      },
+                      sender: {
+                        type: LinkerActionSenderTypes.Device,
+                        data: signer,
+                      },
+                    };
+
+                    this.linker.incomingAction$.next(action);
+                    break;
+                  }
+                }
+
+              } finally {
+                this.destroySecureAction();
+              }
+              break;
+            }
           }
         }))),
       )
@@ -380,6 +493,39 @@ export class Sdk implements ISdk {
         map((settings) => settings.ens),
       )
       .subscribe(this.ens.attributes$);
+  }
+
+  protected configureLinker(): void {
+    this
+      .linker
+      .acceptedAction$
+      .pipe(
+        filter((action) => !!action),
+        switchMap(({ type, payload, sender }) => from(this.error$.wrapTAsync(async () => {
+          switch (type) {
+            case LinkerActionsTypes.CreateAccountDevice: {
+              const { deviceAddress } = payload as LinkerActionPayloads.ICreateAccountDevice;
+              // TODO
+              break;
+            }
+
+            case LinkerActionsTypes.AccountDeviceCreated: {
+              const { accountEnsName, deviceAddress } = payload as LinkerActionPayloads.IAccountDeviceCreated;
+              // TODO
+              break;
+            }
+
+            case LinkerActionsTypes.Secure: {
+              if (sender.type === LinkerActionSenderTypes.Device) {
+                const { hash } = payload as LinkerActionPayloads.ISecure;
+                const signature = await this.device.signPersonalMessage(hash);
+                this.api.signSecureAction(sender.data, signature);
+              }
+              break;
+            }
+          }
+        }))),
+      ).subscribe();
   }
 
   protected configureNetwork(): void {

@@ -6,9 +6,11 @@ export interface ILinker {
   incomingUrl$: TUniqueBehaviorSubject<string>;
   incomingAction$: TUniqueBehaviorSubject<ILinkerAction>;
   acceptedAction$: TUniqueBehaviorSubject<ILinkerAction>;
+  appName: string;
   acceptAction(action?: ILinkerAction): void;
   rejectAction(): void;
-  buildActionUrl<P = any, F = any>(action: ILinkerAction<P, F>, toApp?: IAppAttributes): string;
+  buildActionUrl<P = any, S = any>(action: ILinkerAction<P, S>, options?: ILinkerBuildActionUrlOptions): string;
+  buildActionUrls<P = any>(action: ILinkerAction<P, any>, toApp?: IAppAttributes): ILinkerActionUrls;
 }
 
 export interface ILinkerOptions {
@@ -16,13 +18,23 @@ export interface ILinkerOptions {
   autoAcceptActions?: boolean;
 }
 
+export interface ILinkerBuildActionUrlOptions {
+  toApp?: IAppAttributes;
+  senderType?: LinkerActionSenderTypes;
+}
+
 export interface ILinkerActionSender<T = any> {
   type: LinkerActionSenderTypes;
   data: T;
 }
 
-export interface ILinkerAction<P = any, F = any> {
+export interface ILinkerAction<P = any, S = any> {
   type: LinkerActionsTypes;
-  sender?: ILinkerActionSender<F>;
+  sender?: ILinkerActionSender<S>;
   payload: P;
+}
+
+export interface ILinkerActionUrls {
+  appUrl: string;
+  deviceUrl: string;
 }

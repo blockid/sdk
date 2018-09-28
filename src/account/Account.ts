@@ -19,8 +19,6 @@ const attributesSchema: TAttributesSchema<IAccountAttributes> = {
  */
 export class Account extends AttributesProxySubject<IAccountAttributes> implements IAccount {
 
-  private localAttributesCache: IAccountAttributes = null;
-
   /**
    * prepares attributes
    * @param attributes
@@ -50,6 +48,8 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
   private options: IAccountOptions;
 
   private contract: ISharedAccountContact;
+
+  private localAttributesCache: IAccountAttributes = null;
 
   /**
    * constructor

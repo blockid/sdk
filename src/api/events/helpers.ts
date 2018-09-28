@@ -21,6 +21,10 @@ function getPayloadProtoType(eventType: ApiEvents.Types): Type {
     case ApiEvents.Types.AccountDeviceRemoved:
       result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.AccountDevice ];
       break;
+
+    case ApiEvents.Types.SignedSecureAction:
+      result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.SecureAction ];
+      break;
   }
 
   return result;

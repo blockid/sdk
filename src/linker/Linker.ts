@@ -4,8 +4,15 @@ import { UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map } from "rxjs/operators";
 import { IAppAttributes, internalApp } from "../app";
 import { IDevice } from "../device";
-import { LinkerActionsTypes, LinkerActionSenderTypes } from "./constants";
-import { ILinker, ILinkerAction, ILinkerOptions, ILinkerActionSender } from "./interfaces";
+import { LinkerActionSenderTypes, LinkerActionsTypes } from "./constants";
+import {
+  ILinker,
+  ILinkerAction,
+  ILinkerActionSender,
+  ILinkerActionUrls,
+  ILinkerBuildActionUrlOptions,
+  ILinkerOptions,
+} from "./interfaces";
 
 /**
  * Linker
@@ -54,6 +61,14 @@ export class Linker implements ILinker {
   }
 
   /**
+   * app name getter
+   */
+  public get appName(): string {
+    const { app } = this.options;
+    return app && app.name ? app.name : null;
+  }
+
+  /**
    * accepts action
    * @param action
    */
@@ -72,26 +87,42 @@ export class Linker implements ILinker {
   /**
    * builds action url
    * @param action
-   * @param toApp
+   * @param options
    */
-  public buildActionUrl<P = any, F = any>(action: ILinkerAction<P, F>, toApp: IAppAttributes = internalApp): string {
+  public buildActionUrl<P = any, S = any>(action: ILinkerAction<P, S>, options: ILinkerBuildActionUrlOptions = {}): string {
     let result: string = null;
 
+    options = {
+      senderType: LinkerActionSenderTypes.Device,
+      toApp: internalApp,
+      ...options,
+    };
+
     const { app } = this.options;
+    const { toApp, senderType } = options;
 
     const { type, payload } = action;
 
-    if (toApp && toApp.callbackUrl) {
-      const sender: ILinkerActionSender = app
-        ? {
-          type: LinkerActionSenderTypes.App,
-          data: app,
+    let sender: ILinkerActionSender = null;
+
+    switch (senderType) {
+      case LinkerActionSenderTypes.App:
+        if (app) {
+          sender = {
+            type: LinkerActionSenderTypes.App,
+            data: app,
+          };
         }
-        : {
+        break;
+      case LinkerActionSenderTypes.Device:
+        sender = {
           type: LinkerActionSenderTypes.Device,
           data: this.device.address,
         };
+        break;
+    }
 
+    if (sender && toApp && toApp.callbackUrl) {
       const query = {
         type,
         sender: JSON.stringify(sender, jsonReplacer),
@@ -102,6 +133,18 @@ export class Linker implements ILinker {
     }
 
     return result;
+  }
+
+  /**
+   * builds action urls
+   * @param action
+   * @param toApp
+   */
+  public buildActionUrls<P = any>(action: ILinkerAction<P, any>, toApp: IAppAttributes = internalApp): ILinkerActionUrls {
+    return {
+      appUrl: this.buildActionUrl(action, { toApp, senderType: LinkerActionSenderTypes.App }),
+      deviceUrl: this.buildActionUrl(action, { toApp, senderType: LinkerActionSenderTypes.Device }),
+    };
   }
 
   private decodeActionUrl(url: string): ILinkerAction {

@@ -1,6 +1,6 @@
 import "cross-fetch/polyfill";
 
-import { jsonReplacer, jsonReviver } from "eth-utils";
+import { anyToHex, jsonReplacer, jsonReviver } from "eth-utils";
 import { merge, Subject } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
 import { map } from "rxjs/operators";
@@ -182,8 +182,22 @@ export class Api implements IApi {
   }
 
   /**
+   * signs secure action
+   * @param recipient
+   * @param signature
+   */
+  public signSecureAction(recipient: string, signature: Buffer): void {
+    this.sendEvent<ApiEvents.Payloads.ISignedSecureAction>({
+      type: ApiEvents.Types.SignedSecureAction,
+      payload: {
+        recipient,
+        signature: anyToHex(signature, { add0x: true }),
+      },
+    });
+  }
+
+  /**
    * gets settings
-   * GET /settings
    */
   public async getSettings(): Promise<ISdkSettings> {
     const { data } = await this.call<any, ISdkSettings>({

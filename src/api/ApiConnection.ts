@@ -7,10 +7,7 @@ const attributesSchema: TAttributesSchema<IApiConnectionAttributes> = {
   state: {
     getter: true,
   },
-  muted: {
-    setter: true,
-    getter: true,
-  },
+  muted: true,
 };
 
 /**

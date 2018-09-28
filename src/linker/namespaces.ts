@@ -1,14 +1,20 @@
 export namespace LinkerActionPayloads {
 
-  export interface ICreateAccountDevice {
+  export interface ICommon {
     networkVersion: number;
-    deviceAddress: string;
-    accountEnsName?: string;
   }
 
-  export interface IAccountDeviceCreated {
-    networkVersion: number;
+  export interface ICreateAccountDevice extends ICommon {
+    deviceAddress: string;
+    appName?: string;
+  }
+
+  export interface IAccountDeviceCreated extends ICommon {
     deviceAddress: string;
     accountEnsName: string;
+  }
+
+  export interface ISecure extends ICommon {
+    hash: Buffer;
   }
 }

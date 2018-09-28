@@ -17,6 +17,7 @@ export interface IApi {
   destroySession(): void;
   muteConnection(): void;
   unMuteConnection(): void;
+  signSecureAction(recipient: string, signature: Buffer): void;
   getSettings(): Promise<ISdkSettings>;
   getAccount(accountEnsName: string): Promise<IAccountAttributes>;
   getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]>;
@@ -37,6 +38,7 @@ export interface IApiOptions {
 
 export interface IApiConnection extends IAttributesProxySubject<IApiConnectionAttributes> {
   state?: ApiConnectionStates;
+  muted$?: TUniqueBehaviorSubject<boolean>;
   muted?: boolean;
   data$: Subject<Buffer>;
   error$: IErrorSubject;
