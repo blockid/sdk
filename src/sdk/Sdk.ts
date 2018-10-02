@@ -6,12 +6,13 @@ import { filter, map, switchMap } from "rxjs/operators";
 import {
   Account,
   AccountDevice,
+  AccountDeviceStates,
+  AccountStates,
   IAccount,
   IAccountAttributes,
   IAccountDevice,
   IAccountDeviceAttributes,
 } from "../account";
-import { AccountStates } from "../account/constants";
 import { Api, ApiEvents, ApiSessionStates, IApi } from "../api";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
@@ -149,28 +150,28 @@ export class Sdk implements ISdk {
 
   /**
    * lookup account
-   * @param accountEnsName
+   * @param account
    */
-  public accountExists(accountEnsName: string): Promise<boolean> {
+  public accountExists(account: Partial<IAccountAttributes>): Promise<boolean> {
     return this.error$.wrapTAsync(async () => {
-      return !!(await this.api.getAccount(accountEnsName));
+      return !!(await this.api.getAccount(account));
     });
   }
 
   /**
    * joins account
-   * @param accountEnsName
+   * @param account
    */
-  public joinAccount(accountEnsName: string): Promise<ILinkerActionUrls> {
+  public joinAccount(account: Partial<IAccountAttributes>): Promise<ILinkerActionUrls> {
     return this.error$.wrapTAsync(async () => {
       let result: ILinkerActionUrls = null;
-      const accountAttributes = await this.api.getAccount(accountEnsName);
+      const accountAttributes = await this.api.getAccount(account);
 
       if (!accountAttributes) {
-        return;
+        return result;
       }
 
-      const accountDeviceAttributes = await this.api.getAccountDevice(accountEnsName, this.device.address);
+      const accountDeviceAttributes = await this.api.getAccountDevice(account, this.device.attributes);
 
       if (accountDeviceAttributes) {
         this.account.attributes = accountAttributes;
@@ -179,9 +180,13 @@ export class Sdk implements ISdk {
         result = this.linker.buildActionUrls<LinkerActionPayloads.ICreateAccountDevice>({
           type: LinkerActionsTypes.CreateAccountDevice,
           payload: {
-            networkVersion: this.network.version,
-            deviceAddress: this.device.address,
-            appName: this.linker.appName,
+            network: {
+              version: this.network.version,
+            },
+            device: {
+              address: this.device.address,
+            },
+            app: this.linker.app,
           },
         });
       }
@@ -192,17 +197,17 @@ export class Sdk implements ISdk {
 
   /**
    * creates account
-   * @param accountEnsName
+   * @param account
    */
-  public createAccount(accountEnsName: string): Promise<void> {
+  public createAccount(account: Partial<IAccountAttributes>): Promise<void> {
     return this.error$.wrapTAsync(async () => {
-      const accountAttributes = await this.api.createAccount(accountEnsName);
+      const accountAttributes = await this.api.createAccount(account);
 
       if (!accountAttributes) {
         return;
       }
 
-      const accountDeviceAttributes = await this.api.getAccountDevice(accountEnsName, this.device.address);
+      const accountDeviceAttributes = await this.api.getAccountDevice(account, this.device.attributes);
 
       if (!accountDeviceAttributes) {
         return;
@@ -225,7 +230,7 @@ export class Sdk implements ISdk {
 
         const deviceSignature = await this.registry.buildAccountDeploymentSignature();
         const guardianSignature = await this.api.getAccountGuardianDeploymentSignature(
-          this.account.ensName,
+          this.account.attributes,
           deviceSignature,
         );
 
@@ -264,7 +269,9 @@ export class Sdk implements ISdk {
     return this.linker.buildActionUrl<LinkerActionPayloads.ISecure>({
       type: LinkerActionsTypes.Secure,
       payload: {
-        networkVersion: this.network.version,
+        network: {
+          version: this.network.version,
+        },
         hash,
       },
     }, {
@@ -404,8 +411,8 @@ export class Sdk implements ISdk {
             case ApiEvents.Types.AccountUpdated: {
               const { ensName } = payload as ApiEvents.Payloads.IAccount;
               if (this.account.ensName === ensName) {
-                const accountAttributes = await this.api.getAccount(ensName);
-                const accountDeviceAttributes = await this.api.getAccountDevice(ensName, this.device.address);
+                const accountAttributes = await this.api.getAccount(this.account.attributes);
+                const accountDeviceAttributes = await this.api.getAccountDevice(this.account.attributes, this.device.attributes);
 
                 if (accountAttributes && accountDeviceAttributes) {
                   this.account.attributes = accountAttributes;
@@ -417,19 +424,45 @@ export class Sdk implements ISdk {
 
             case ApiEvents.Types.AccountDeviceAdded: {
               const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
-              // TODO
+              if (
+                !this.account.ready &&
+                address === this.device.address
+              ) {
+                const accountAttributes = await this.api.getAccount(account);
+                const accountDeviceAttributes = await this.api.getAccountDevice(account, { address });
+
+                if (accountAttributes && accountDeviceAttributes) {
+                  this.account.attributes = accountAttributes;
+                  this.accountDevice.attributes = accountDeviceAttributes;
+                }
+              }
               break;
             }
 
             case ApiEvents.Types.AccountDeviceUpdated: {
               const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
-              // TODO
+              if (
+                this.account.ready &&
+                account.ensName === this.account.ensName &&
+                address === this.device.address
+              ) {
+                const accountDeviceAttributes = await this.api.getAccountDevice(account, { address });
+                if (accountDeviceAttributes) {
+                  this.accountDevice.attributes = accountDeviceAttributes;
+                }
+              }
               break;
             }
 
             case ApiEvents.Types.AccountDeviceRemoved: {
               const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
-              // TODO
+              if (
+                this.account.ready &&
+                account.ensName === this.account.ensName &&
+                address === this.device.address
+              ) {
+                this.resetAccount();
+              }
               break;
             }
 
@@ -452,8 +485,12 @@ export class Sdk implements ISdk {
                     const action: ILinkerAction<LinkerActionPayloads.ICreateAccountDevice> = {
                       type,
                       payload: {
-                        networkVersion: this.network.version,
-                        deviceAddress: signer,
+                        network: {
+                          version: this.network.version,
+                        },
+                        device: {
+                          address: signer,
+                        },
                       },
                       sender: {
                         type: LinkerActionSenderTypes.Device,
@@ -504,14 +541,41 @@ export class Sdk implements ISdk {
         switchMap(({ type, payload, sender }) => from(this.error$.wrapTAsync(async () => {
           switch (type) {
             case LinkerActionsTypes.CreateAccountDevice: {
-              const { deviceAddress } = payload as LinkerActionPayloads.ICreateAccountDevice;
-              // TODO
+              if (this.account.ready) {
+                const { device } = payload as LinkerActionPayloads.ICreateAccountDevice;
+
+                let accountDeviceAttributes = await this.api.getAccountDevice(this.account, device);
+
+                if (!accountDeviceAttributes) {
+                  accountDeviceAttributes = await this.api.createAccountDevice(
+                    this.account,
+                    device,
+                  );
+                }
+
+                if (
+                  accountDeviceAttributes &&
+                  accountDeviceAttributes.state === AccountDeviceStates.Created &&
+                  this.account.attributes.state === AccountStates.Deployed &&
+                  this.accountDevice.attributes.state === AccountDeviceStates.Deployed
+                ) {
+                  await this.account.deployDevice(accountDeviceAttributes);
+                }
+              }
               break;
             }
 
             case LinkerActionsTypes.AccountDeviceCreated: {
-              const { accountEnsName, deviceAddress } = payload as LinkerActionPayloads.IAccountDeviceCreated;
-              // TODO
+              const { account, device } = payload as LinkerActionPayloads.IAccountDeviceCreated;
+              if (!this.account.ready && device.address === this.device.address) {
+                const accountAttributes = await this.api.getAccount(account);
+                const accountDeviceAttributes = await this.api.getAccountDevice(account, device);
+
+                if (accountAttributes && accountDeviceAttributes) {
+                  this.account.attributes = accountAttributes;
+                  this.accountDevice.attributes = accountDeviceAttributes;
+                }
+              }
               break;
             }
 

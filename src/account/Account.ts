@@ -1,9 +1,15 @@
+import * as BN from "bn.js";
 import { AttributesProxySubject, TAttributesSchema } from "rxjs-addons";
-import { SharedAccountContact, ISharedAccountContact } from "../contract";
 import { IApi } from "../api";
+import { ISharedAccountContact, SharedAccountContact } from "../contract";
 import { IDevice } from "../device";
 import { INetwork } from "../network";
-import { IAccount, IAccountOptions, IAccountAttributes } from "./interfaces";
+import {
+  IAccount,
+  IAccountAttributes,
+  IAccountOptions,
+  IAccountDeviceAttributes,
+} from "./interfaces";
 
 const attributesSchema: TAttributesSchema<IAccountAttributes> = {
   salt: {
@@ -77,6 +83,13 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
   }
 
   /**
+   * ready getter
+   */
+  public get ready(): boolean {
+    return !!this.getAttribute("salt");
+  }
+
+  /**
    * updates local attributes
    * @param attributes
    */
@@ -95,5 +108,39 @@ export class Account extends AttributesProxySubject<IAccountAttributes> implemen
   public revertLocalAttributes(): void {
     this.attributes = this.localAttributesCache;
     this.localAttributesCache = null;
+  }
+
+  /**
+   * deploys device
+   * @param accountDevice
+   */
+  public async deployDevice(accountDevice: IAccountDeviceAttributes): Promise<void> {
+    const nonce = await this.contract.nonce;
+    const gasPrice = await this.network.getGasPrice();
+
+    const member = accountDevice.device.address;
+    const purpose = accountDevice.app ? accountDevice.app.address : this.contract.address;
+    const limit = accountDevice.limit || new BN(0);
+    const unlimited = !accountDevice.limit;
+
+    const refundGasBase = this.contract.estimateAddMemberRefundGasBase(
+      nonce,
+      member,
+      purpose,
+      limit,
+      unlimited,
+    );
+
+    const signature = await this.contract.calcAddMemberSignature(
+      nonce,
+      member,
+      purpose,
+      limit,
+      unlimited,
+      refundGasBase,
+      gasPrice,
+    );
+
+    await this.api.deployAccountDevice(this.attributes, accountDevice.device, nonce, signature, gasPrice);
   }
 }

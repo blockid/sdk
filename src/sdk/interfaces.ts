@@ -1,5 +1,5 @@
 import { IErrorSubject } from "rxjs-addons";
-import { IAccount, IAccountOptions, IAccountDevice } from "../account";
+import { IAccount, IAccountOptions, IAccountDevice, IAccountAttributes } from "../account";
 import { IApi, IApiOptions } from "../api";
 import { IDevice } from "../device";
 import { IEns, IEnsAttributes } from "../ens";
@@ -18,14 +18,14 @@ export interface ISdk {
   linker: ILinker;
   network: INetwork;
   registry: IRegistry;
-  configure(): Promise<ISdk>;
+  configure(additionalOptions?: ISdkOptions): Promise<ISdk>;
   createApiSession(): Promise<void>;
   destroyApiSession(): void;
   muteApiConnection(): void;
   unMuteApiConnection(): void;
-  accountExists(accountEnsName: string): Promise<boolean>;
-  joinAccount(accountEnsName: string): Promise<ILinkerActionUrls>;
-  createAccount(accountEnsName: string): Promise<void>;
+  accountExists(account: Partial<IAccountAttributes>): Promise<boolean>;
+  joinAccount(account: Partial<IAccountAttributes>): Promise<ILinkerActionUrls>;
+  createAccount(account: Partial<IAccountAttributes>): Promise<void>;
   deployAccount(): Promise<void>;
   resetAccount(): void;
   createSecureActionUrl(type: LinkerActionsTypes): string;

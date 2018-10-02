@@ -61,11 +61,10 @@ export class Linker implements ILinker {
   }
 
   /**
-   * app name getter
+   * app getter
    */
-  public get appName(): string {
-    const { app } = this.options;
-    return app && app.name ? app.name : null;
+  public get app(): IAppAttributes {
+    return this.options.app || null;
   }
 
   /**

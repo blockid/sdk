@@ -1,5 +1,6 @@
 import "cross-fetch/polyfill";
 
+import * as BN from "bn.js";
 import { anyToHex, jsonReplacer, jsonReviver } from "eth-utils";
 import { merge, Subject } from "rxjs";
 import { ErrorSubject, UniqueBehaviorSubject } from "rxjs-addons";
@@ -7,7 +8,7 @@ import { map } from "rxjs/operators";
 import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
 import { IAppAttributes } from "../app";
 import { ISdkSettings } from "../sdk";
-import { IDevice } from "../device";
+import { IDevice, IDeviceAttributes } from "../device";
 import { ApiConnection } from "./ApiConnection";
 import { ApiSession } from "./ApiSession";
 import { ApiConnectionStates } from "./constants";
@@ -210,12 +211,12 @@ export class Api implements IApi {
 
   /**
    * gets account
-   * @param accountEnsName
+   * @param account
    */
-  public async getAccount(accountEnsName: string): Promise<IAccountAttributes> {
+  public async getAccount({ ensName }: Partial<IAccountAttributes>): Promise<IAccountAttributes> {
     const { data } = await this.call<any, IAccountAttributes>({
       method: "GET",
-      path: `account/${accountEnsName}`,
+      path: `account/${ensName}`,
     });
 
     return data || null;
@@ -223,12 +224,12 @@ export class Api implements IApi {
 
   /**
    * gets account devices
-   * @param accountEnsName
+   * @param account
    */
-  public async getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]> {
+  public async getAccountDevices({ ensName }: Partial<IAccountAttributes>): Promise<IAccountDeviceAttributes[]> {
     const { data } = await this.call<any, IAccountDeviceAttributes[]>({
       method: "GET",
-      path: `account/${accountEnsName}/device`,
+      path: `account/${ensName}/device`,
     });
 
     return data || null;
@@ -236,13 +237,13 @@ export class Api implements IApi {
 
   /**
    * gets account device
-   * @param accountEnsName
-   * @param deviceAddress
+   * @param account
+   * @param device
    */
-  public async getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes> {
+  public async getAccountDevice({ ensName }: Partial<IAccountAttributes>, { address }: Partial<IDeviceAttributes>): Promise<IAccountDeviceAttributes> {
     const { data } = await this.call<any, IAccountDeviceAttributes>({
       method: "GET",
-      path: `account/${accountEnsName}/device/${deviceAddress}`,
+      path: `account/${ensName}/device/${address}`,
     });
 
     return data || null;
@@ -250,16 +251,14 @@ export class Api implements IApi {
 
   /**
    * creates account
-   * @param accountEnsName
+   * @param account
    */
-  public async createAccount(accountEnsName: string): Promise<IAccountAttributes> {
-    const { data } = await this.call<{
-      ensName: string,
-    }, IAccountAttributes>({
+  public async createAccount({ ensName }: Partial<IAccountAttributes>): Promise<IAccountAttributes> {
+    const { data } = await this.call<any, IAccountAttributes>({
       method: "POST",
       path: "account",
       body: {
-        ensName: accountEnsName,
+        ensName,
       },
     });
 
@@ -268,17 +267,80 @@ export class Api implements IApi {
 
   /**
    * gets account guardian deployment signature
-   * @param accountEnsName
+   * @param account
    * @param signature
    */
-  public async getAccountGuardianDeploymentSignature(accountEnsName: string, signature: Buffer): Promise<Buffer> {
-    const { data } = await this.call<{
-      signature: Buffer,
-    }, Buffer>({
+  public async getAccountGuardianDeploymentSignature({ ensName }: Partial<IAccountAttributes>, signature: Buffer): Promise<Buffer> {
+    const { data } = await this.call<any, Buffer>({
       method: "PUT",
-      path: `account/${accountEnsName}`,
+      path: `account/${ensName}`,
       body: {
         signature,
+      },
+    });
+
+    return data || null;
+  }
+
+  /**
+   * creates account device
+   * @param account
+   * @param device
+   * @param app
+   * @param limit
+   * @param signature
+   */
+  public async createAccountDevice(
+    { ensName }: Partial<IAccountAttributes>,
+    device: Partial<IDeviceAttributes>,
+    app: Partial<IAppAttributes> = null,
+    limit: BN.IBN = null,
+    signature: Buffer = null,
+  ): Promise<IAccountDeviceAttributes> {
+    const { data } = await this.call<any, IAccountDeviceAttributes>({
+      method: "POST",
+      path: `account/${ensName}/device`,
+      body: {
+        device: {
+          address: device.address,
+        },
+        app: (
+          app
+            ? {
+              address: app.address,
+            }
+            : null
+        ),
+        limit,
+        signature,
+      },
+    });
+
+    return data || null;
+  }
+
+  /**
+   * deploys account device
+   * @param ensName
+   * @param address
+   * @param nonce
+   * @param signature
+   * @param gasPrice
+   */
+  public async deployAccountDevice(
+    { ensName }: Partial<IAccountAttributes>,
+    { address }: Partial<IDeviceAttributes>,
+    nonce: BN.IBN,
+    signature: Buffer,
+    gasPrice: BN.IBN,
+  ): Promise<IAccountDeviceAttributes> {
+    const { data } = await this.call<any, IAccountDeviceAttributes>({
+      method: "PUT",
+      path: `account/${ensName}/device/${address}`,
+      body: {
+        nonce,
+        signature,
+        gasPrice,
       },
     });
 
@@ -318,24 +380,31 @@ export class Api implements IApi {
 
     const { method, path, body } = req;
 
-    const res = await fetch(`${this.endpoints.http}/${path}`, {
-      method,
-      headers: new Headers({
-        "Content-Type": "application/json",
-        "Pragma": "no-cache",
-        "Cache-Control": "no-cache",
-        "X-Session-Token": this.session.token || "",
-      }),
-      ...(
-        method !== "GET" &&
-        method !== "HEAD"
-          ? { body: JSON.stringify(body || {}, jsonReplacer) }
-          : {}
-      ),
-    });
+    let text: string = null;
 
-    const text = await res.text();
-    return JSON.parse(text, jsonReviver);
+    try {
+
+      const res = await fetch(`${this.endpoints.http}/${path}`, {
+        method,
+        headers: new Headers({
+          "Content-Type": "application/json",
+          "Pragma": "no-cache",
+          "Cache-Control": "no-cache",
+          "X-Session-Token": this.session.token || "",
+        }),
+        ...(
+          method !== "GET" &&
+          method !== "HEAD"
+            ? { body: JSON.stringify(body || {}, jsonReplacer) }
+            : {}
+        ),
+      });
+      text = await res.text();
+    } catch (err) {
+      //
+    }
+
+    return text ? JSON.parse(text, jsonReviver) : {};
   }
 
   private sendEvent<T = any>(event: IApiEvent<T>): void {

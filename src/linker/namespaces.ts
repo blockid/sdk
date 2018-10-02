@@ -1,17 +1,27 @@
+import { IBN } from "bn.js";
+import { IAccountAttributes } from "../account";
+import { IAppAttributes } from "../app";
+import { IDeviceAttributes } from "../device";
+import { INetworkAttributes } from "../network";
+
 export namespace LinkerActionPayloads {
 
   export interface ICommon {
-    networkVersion: number;
+    network: {
+      version: number;
+    };
   }
 
   export interface ICreateAccountDevice extends ICommon {
-    deviceAddress: string;
-    appName?: string;
+    device: Partial<IDeviceAttributes>;
+    app?: Partial<IAppAttributes>;
+    limit?: IBN;
   }
 
   export interface IAccountDeviceCreated extends ICommon {
-    deviceAddress: string;
-    accountEnsName: string;
+    account: Partial<IAccountAttributes>;
+    device: Partial<IDeviceAttributes>;
+    limit?: IBN;
   }
 
   export interface ISecure extends ICommon {

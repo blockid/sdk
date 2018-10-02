@@ -8,8 +8,10 @@ export interface IAccount extends IAttributesProxySubject<IAccountAttributes> {
   salt?: number;
   balance?: IBN;
   ensName?: string;
+  ready: boolean;
   updateLocalAttributes(attributes: Partial<IAccountAttributes>): void;
   revertLocalAttributes(): void;
+  deployDevice(accountDevice: IAccountDeviceAttributes): Promise<void>;
 }
 
 export interface IAccountDevice extends IAttributesProxySubject<IAccountDeviceAttributes> {

@@ -1,6 +1,9 @@
+import { IBN } from "bn.js";
+import * as BN from "bn.js";
 import { Subject } from "rxjs";
 import { TUniqueBehaviorSubject, IAttributesProxySubject, IErrorSubject } from "rxjs-addons";
 import { IAccountAttributes, IAccountDeviceAttributes } from "../account";
+import { IDeviceAttributes } from "../device";
 import { IAppAttributes } from "../app";
 import { ISdkSettings } from "../sdk";
 import { IApiEvent } from "./events";
@@ -19,11 +22,25 @@ export interface IApi {
   unMuteConnection(): void;
   signSecureAction(recipient: string, signature: Buffer): void;
   getSettings(): Promise<ISdkSettings>;
-  getAccount(accountEnsName: string): Promise<IAccountAttributes>;
-  getAccountDevices(accountEnsName: string): Promise<IAccountDeviceAttributes[]>;
-  getAccountDevice(accountEnsName: string, deviceAddress: string): Promise<IAccountDeviceAttributes>;
-  createAccount(accountEnsName: string): Promise<IAccountAttributes>;
-  getAccountGuardianDeploymentSignature(accountEnsName: string, signature: Buffer): Promise<Buffer>;
+  getAccount(account: Partial<IAccountAttributes>): Promise<IAccountAttributes>;
+  getAccountDevices(account: Partial<IAccountAttributes>): Promise<IAccountDeviceAttributes[]>;
+  getAccountDevice(account: Partial<IAccountAttributes>, device: Partial<IDeviceAttributes>): Promise<IAccountDeviceAttributes>;
+  createAccount(account: Partial<IAccountAttributes>): Promise<IAccountAttributes>;
+  getAccountGuardianDeploymentSignature(account: Partial<IAccountAttributes>, signature: Buffer): Promise<Buffer>;
+  createAccountDevice(
+    account: Partial<IAccountAttributes>,
+    device: Partial<IDeviceAttributes>,
+    app?: Partial<IAppAttributes>,
+    limit?: BN.IBN,
+    signature?: Buffer,
+  ): Promise<IAccountDeviceAttributes>;
+  deployAccountDevice(
+    account: Partial<IAccountAttributes>,
+    device: Partial<IDeviceAttributes>,
+    nonce: IBN,
+    signature: Buffer,
+    gasPrice: IBN,
+  ): Promise<IAccountDeviceAttributes>;
   getApps(page?: number): Promise<IApiListData<IAppAttributes>>;
   getApp(appNameOrAddress: string): Promise<IAppAttributes>;
 }

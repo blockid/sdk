@@ -6,7 +6,7 @@ export interface ILinker {
   incomingUrl$: TUniqueBehaviorSubject<string>;
   incomingAction$: TUniqueBehaviorSubject<ILinkerAction>;
   acceptedAction$: TUniqueBehaviorSubject<ILinkerAction>;
-  appName: string;
+  app: IAppAttributes;
   acceptAction(action?: ILinkerAction): void;
   rejectAction(): void;
   buildActionUrl<P = any, S = any>(action: ILinkerAction<P, S>, options?: ILinkerBuildActionUrlOptions): string;

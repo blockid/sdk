@@ -146,20 +146,12 @@ export class Contract implements IContract {
     return result;
   }
 
-  protected async call<T = IResult>(methodName: string, ...args: any[]): Promise<T> {
-    this.verifyNetwork();
-    this.verifyAddress();
-
-    const data = this.encodeMethodInput(methodName, ...args);
-    const output = await this.network.callMessage({
-      to: this.address,
-      data,
-    });
-
-    return this.decodeMethodOutput<T>(methodName, output);
-  }
-
-  protected send(methodName: string, ...args: any[]): TContractSendResult {
+  /**
+   * sends
+   * @param methodName
+   * @param args
+   */
+  public send(methodName: string, ...args: any[]): TContractSendResult {
     this.verifyNetwork();
     this.verifyDevice();
     this.verifyAddress();
@@ -173,7 +165,30 @@ export class Contract implements IContract {
     });
   }
 
-  protected estimate(methodName: string, ...args: any[]): TContractEstimateResult {
+  /**
+   * calls
+   * @param methodName
+   * @param args
+   */
+  public async call<T = IResult>(methodName: string, ...args: any[]): Promise<T> {
+    this.verifyNetwork();
+    this.verifyAddress();
+
+    const data = this.encodeMethodInput(methodName, ...args);
+    const output = await this.network.callMessage({
+      to: this.address,
+      data,
+    });
+
+    return this.decodeMethodOutput<T>(methodName, output);
+  }
+
+  /**
+   * estimates
+   * @param methodName
+   * @param args
+   */
+  public estimate(methodName: string, ...args: any[]): TContractEstimateResult {
     this.verifyNetwork();
     this.verifyAddress();
 
