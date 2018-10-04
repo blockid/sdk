@@ -295,7 +295,6 @@ export class Api implements IApi {
     device: Partial<IDeviceAttributes>,
     app: Partial<IAppAttributes> = null,
     limit: BN.IBN = null,
-    signature: Buffer = null,
   ): Promise<IAccountDeviceAttributes> {
     const { data } = await this.call<any, IAccountDeviceAttributes>({
       method: "POST",
@@ -312,7 +311,6 @@ export class Api implements IApi {
             : null
         ),
         limit,
-        signature,
       },
     });
 

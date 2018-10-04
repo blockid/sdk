@@ -2,7 +2,6 @@ import { IBN } from "bn.js";
 import { IAccountAttributes } from "../account";
 import { IAppAttributes } from "../app";
 import { IDeviceAttributes } from "../device";
-import { INetworkAttributes } from "../network";
 
 export namespace LinkerActionPayloads {
 
@@ -16,6 +15,10 @@ export namespace LinkerActionPayloads {
     device: Partial<IDeviceAttributes>;
     app?: Partial<IAppAttributes>;
     limit?: IBN;
+  }
+
+  export interface IDeployAccountDevice extends ICommon {
+    device: Partial<IDeviceAttributes>;
   }
 
   export interface IAccountDeviceCreated extends ICommon {

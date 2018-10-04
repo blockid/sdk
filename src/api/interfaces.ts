@@ -32,7 +32,6 @@ export interface IApi {
     device: Partial<IDeviceAttributes>,
     app?: Partial<IAppAttributes>,
     limit?: BN.IBN,
-    signature?: Buffer,
   ): Promise<IAccountDeviceAttributes>;
   deployAccountDevice(
     account: Partial<IAccountAttributes>,

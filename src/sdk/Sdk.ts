@@ -481,7 +481,8 @@ export class Sdk implements ISdk {
                 }
 
                 switch (type) {
-                  case LinkerActionsTypes.CreateAccountDevice: {
+                  case LinkerActionsTypes.CreateAccountDevice:
+                  case LinkerActionsTypes.DeployAccountDevice: {
                     const action: ILinkerAction<LinkerActionPayloads.ICreateAccountDevice> = {
                       type,
                       payload: {
@@ -542,16 +543,27 @@ export class Sdk implements ISdk {
           switch (type) {
             case LinkerActionsTypes.CreateAccountDevice: {
               if (this.account.ready) {
-                const { device } = payload as LinkerActionPayloads.ICreateAccountDevice;
+                const { device, app, limit } = payload as LinkerActionPayloads.ICreateAccountDevice;
 
-                let accountDeviceAttributes = await this.api.getAccountDevice(this.account, device);
+                const accountDeviceAttributes = await this.api.getAccountDevice(this.account, device);
 
                 if (!accountDeviceAttributes) {
-                  accountDeviceAttributes = await this.api.createAccountDevice(
+                  await this.api.createAccountDevice(
                     this.account,
                     device,
+                    app || null,
+                    limit || null,
                   );
                 }
+              }
+              break;
+            }
+
+            case LinkerActionsTypes.DeployAccountDevice: {
+              if (this.account.ready) {
+                const { device } = payload as LinkerActionPayloads.IDeployAccountDevice;
+
+                const accountDeviceAttributes = await this.api.getAccountDevice(this.account, device);
 
                 if (
                   accountDeviceAttributes &&

@@ -1,5 +1,6 @@
 export enum LinkerActionsTypes {
   CreateAccountDevice = "CREATE_ACCOUNT_DEVICE",
+  DeployAccountDevice = "DEPLOY_ACCOUNT_DEVICE",
   AccountDeviceCreated = "ACCOUNT_DEVICE_CREATED",
   Secure = "SECURE",
 }
