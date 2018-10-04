@@ -1,11 +1,13 @@
+import { BehaviorSubject } from "rxjs";
 import { TUniqueBehaviorSubject } from "rxjs-addons";
 import { IAppAttributes } from "../app";
 import { LinkerActionsTypes, LinkerActionSenderTypes } from "./constants";
 
 export interface ILinker {
   incomingUrl$: TUniqueBehaviorSubject<string>;
-  incomingAction$: TUniqueBehaviorSubject<ILinkerAction>;
-  acceptedAction$: TUniqueBehaviorSubject<ILinkerAction>;
+  outgoingUrl$: BehaviorSubject<string>;
+  incomingAction$: BehaviorSubject<ILinkerAction>;
+  acceptedAction$: BehaviorSubject<ILinkerAction>;
   app: IAppAttributes;
   acceptAction(action?: ILinkerAction): void;
   rejectAction(): void;

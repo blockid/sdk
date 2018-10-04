@@ -8,9 +8,10 @@ export namespace ApiEvents {
     ConnectionUnMuted = 0x04,
 
     // 0x1 - account
-    AccountUpdated = 0x12,
+    AccountUpdated = 0x11,
 
     // 0x2 - account member
+    AccountDevice = 0x20,
     AccountDeviceAdded = 0x21,
     AccountDeviceUpdated = 0x22,
     AccountDeviceRemoved = 0x23,

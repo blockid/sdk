@@ -239,11 +239,12 @@ export class Api implements IApi {
    * gets account device
    * @param account
    * @param device
+   * @param touch
    */
-  public async getAccountDevice({ ensName }: Partial<IAccountAttributes>, { address }: Partial<IDeviceAttributes>): Promise<IAccountDeviceAttributes> {
+  public async getAccountDevice({ ensName }: Partial<IAccountAttributes>, { address }: Partial<IDeviceAttributes>, touch = false): Promise<IAccountDeviceAttributes> {
     const { data } = await this.call<any, IAccountDeviceAttributes>({
       method: "GET",
-      path: `account/${ensName}/device/${address}`,
+      path: `account/${ensName}/device/${address}?touch=${touch ? "1" : ""}`,
     });
 
     return data || null;

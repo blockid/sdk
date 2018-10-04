@@ -24,7 +24,7 @@ export interface IApi {
   getSettings(): Promise<ISdkSettings>;
   getAccount(account: Partial<IAccountAttributes>): Promise<IAccountAttributes>;
   getAccountDevices(account: Partial<IAccountAttributes>): Promise<IAccountDeviceAttributes[]>;
-  getAccountDevice(account: Partial<IAccountAttributes>, device: Partial<IDeviceAttributes>): Promise<IAccountDeviceAttributes>;
+  getAccountDevice(account: Partial<IAccountAttributes>, device: Partial<IDeviceAttributes>, touch?: boolean): Promise<IAccountDeviceAttributes>;
   createAccount(account: Partial<IAccountAttributes>): Promise<IAccountAttributes>;
   getAccountGuardianDeploymentSignature(account: Partial<IAccountAttributes>, signature: Buffer): Promise<Buffer>;
   createAccountDevice(

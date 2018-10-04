@@ -1,5 +1,6 @@
 import { jsonReplacer, jsonReviver } from "eth-utils";
 import { parse, stringify } from "querystring";
+import { BehaviorSubject } from "rxjs";
 import { UniqueBehaviorSubject } from "rxjs-addons";
 import { filter, map } from "rxjs/operators";
 import { IAppAttributes, internalApp } from "../app";
@@ -25,14 +26,19 @@ export class Linker implements ILinker {
   public incomingUrl$ = new UniqueBehaviorSubject<string>();
 
   /**
+   * outgoing url subject
+   */
+  public outgoingUrl$ = new BehaviorSubject<string>(null);
+
+  /**
    * incoming action subject
    */
-  public incomingAction$ = new UniqueBehaviorSubject<ILinkerAction>();
+  public incomingAction$ = new BehaviorSubject<ILinkerAction>(null);
 
   /**
    * accepted action subject
    */
-  public acceptedAction$ = new UniqueBehaviorSubject<ILinkerAction>();
+  public acceptedAction$ = new BehaviorSubject<ILinkerAction>(null);
 
   private readonly options: ILinkerOptions;
 

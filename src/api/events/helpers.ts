@@ -16,6 +16,7 @@ function getPayloadProtoType(eventType: ApiEvents.Types): Type {
       result = apiEventsPayloadProtoTypes[ ApiEventsPayloadProtoTypeNames.Account ];
       break;
 
+    case ApiEvents.Types.AccountDevice:
     case ApiEvents.Types.AccountDeviceAdded:
     case ApiEvents.Types.AccountDeviceUpdated:
     case ApiEvents.Types.AccountDeviceRemoved:

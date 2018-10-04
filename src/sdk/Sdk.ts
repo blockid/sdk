@@ -14,11 +14,13 @@ import {
   IAccountDeviceAttributes,
 } from "../account";
 import { Api, ApiEvents, ApiSessionStates, IApi } from "../api";
+import { IAppAttributes } from "../app";
 import { Device, IDevice, IDeviceAttributes } from "../device";
 import { Ens, IEns } from "../ens";
 import {
   ILinker,
   ILinkerAction,
+  ILinkerActionSender,
   ILinkerActionUrls,
   Linker,
   LinkerActionPayloads,
@@ -422,6 +424,7 @@ export class Sdk implements ISdk {
               break;
             }
 
+            case ApiEvents.Types.AccountDevice:
             case ApiEvents.Types.AccountDeviceAdded: {
               const { account, address } = payload as ApiEvents.Payloads.IAccountDevice;
               if (
@@ -543,17 +546,45 @@ export class Sdk implements ISdk {
           switch (type) {
             case LinkerActionsTypes.CreateAccountDevice: {
               if (this.account.ready) {
-                const { device, app, limit } = payload as LinkerActionPayloads.ICreateAccountDevice;
+                const { network, device, app, limit } = payload as LinkerActionPayloads.ICreateAccountDevice;
 
-                const accountDeviceAttributes = await this.api.getAccountDevice(this.account, device);
+                let accountDeviceAttributes = await this.api.getAccountDevice(this.account, device, true);
 
                 if (!accountDeviceAttributes) {
-                  await this.api.createAccountDevice(
+                  accountDeviceAttributes = await this.api.createAccountDevice(
                     this.account,
                     device,
                     app || null,
                     limit || null,
                   );
+                }
+
+                if (sender) {
+                  switch (sender.type) {
+                    case LinkerActionSenderTypes.App: {
+                      const { data } = sender as ILinkerActionSender<IAppAttributes>;
+                      if (data && data.callbackUrl) {
+                        const action: ILinkerAction<LinkerActionPayloads.IAccountDeviceCreated, IAppAttributes> = {
+                          type: LinkerActionsTypes.AccountDeviceCreated,
+                          payload: {
+                            device,
+                            account: {
+                              ensName: this.account.ensName,
+                            },
+                            network,
+                          },
+                        };
+
+                        const url = this.linker.buildActionUrl(action, {
+                          senderType: LinkerActionSenderTypes.App,
+                          toApp: data,
+                        });
+
+                        this.linker.outgoingUrl$.next(url);
+                      }
+                      break;
+                    }
+                  }
                 }
               }
               break;
@@ -601,7 +632,8 @@ export class Sdk implements ISdk {
             }
           }
         }))),
-      ).subscribe();
+      )
+      .subscribe();
   }
 
   protected configureNetwork(): void {
